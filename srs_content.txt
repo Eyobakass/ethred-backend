@@ -1,0 +1,495 @@
+
+
+Software Requirements Specification (SRS)
+for Ethred
+Modern Ethiopian Real Estate Ecosystem
+
+
+
+
+Table of Contents
+Introduction
+1.1 Purpose
+1.2 Scope
+1.3 Intended Audience
+1.4 Definitions, Acronyms & Abbreviations
+1.5 References
+1.6 Document Overview
+Overall Description
+2.1 Product Perspective & Context
+2.2 Product Vision & Business Goals
+2.3 Product Objectives & Target Metrics
+2.4 User Persona Profiles & Classes
+2.5 Operating Environment & Target Platforms
+2.6 Design & Implementation Constraints
+2.7 Assumptions & Dependencies
+Functional Requirements (MoSCoW Matrix)
+3.1 Authentication & Authorization [Phase 1]
+3.2 User Management [Phase 1 & 2]
+3.3 Buyer & Discovery Module [Phase 1 & 4]
+3.4 Individual Seller Module [Phase 1 & 3]
+3.5 Agency Module [Phase 1, 3 & 6]
+3.6 Property Management Module [Phase 1]
+3.7 Search, Discovery & Map Module [Phase 1, 4 & 7]
+3.8 Communication & In-App Chat [Phase 5]
+3.9 Trust & Verification Module [Phase 2]
+3.10 AI Integration Module [Phase 2 & 9]
+3.11 Localized Billing & Payments [Phase 3 & 7]
+3.12 Administration, Moderation & CMS [Phase 1 & 2]
+3.13 Audit, Security Logs & Reporting [Phase 1 & 6]
+External Interface Requirements
+4.1 User Interface (UI/UX Guidelines)
+4.2 API Gateway & JSON Web Interface Specs
+4.3 Third-Party API Integrations (Chapa, SantimPay, SMS, Maps)
+Database Architecture & Specifications
+5.1 System ERD (Entity Relationship Diagram)
+5.2 Complete Data Dictionary & SQL DDL Script
+5.3 Indexing & PostGIS Partitioning Strategy
+Non-Functional Requirements (NFR)
+6.1 Performance & Latency Constraints
+6.2 Availability, Reliability & Recovery
+6.3 Security & Compliance (OWASP Top 10)
+6.4 Localization & Accessibility (Language & Currency)
+System Architecture & Deployment Topology
+7.1 Multi-Tier Cloud Deployment
+7.2 Cache & Content Delivery Network (CDN) Configuration
+7.3 Real-time Notification Engine Pipeline
+Business Rules & State Transitions
+8.1 Property Listing Approval State Machine
+8.2 User Trust Level Hierarchy
+8.3 Payment and Promotion State Workflows
+Use Case Scenarios & User Stories
+9.1 Core Use Cases
+9.2 Agile User Stories with Gherkin Acceptance Criteria
+Testing Requirements
+10.1 Unit Testing Strategy
+10.2 Integration & API Testing
+10.3 Performance & Load Testing Parameters
+10.4 User Acceptance Testing (UAT)
+Future Enhancements & Roadmap
+Appendices & Traceability Matrix
+
+1. Introduction
+1.1 Purpose
+This document establishes the official Software Requirements Specification (SRS) for Ethred, a comprehensive real estate ecosystem tailored explicitly for the Ethiopian socio-economic and technological context. It outlines functional behavior, database structures, security parameters, payment integrations, and localization protocols required for development.
+1.2 Scope
+Ethred is an end-to-end digital property platform serving buyers, renters, individual sellers, real estate developers, and agencies. 
+┌────────────────────────────────────────────────────────────────────────┐
+│                        ETHRED ECOSYSTEM PHASES                        │
+└────────────────────────────────────────────────────────────────────────┘
+     ▲
+     │  Phase 9: Super Premium (AI Chatbot, Virtual Tours, Walkability)
+     │  Phase 8: Future Expansions (Auctions, Home Inspections, Rentals)
+     │  Phase 7: Ethiopian-Specific Features (Telebirr, CBE Birr, Chapa)
+     │  Phase 6: Enterprise Features (CRM, Employee Roles, Branch Analytics)
+     │  Phase 5: Communication (In-App Chat, Whatsapp, Appointments)
+     │  Phase 4: Client Impression (Dark mode, Comparison, Insights)
+     │  Phase 3: Revenue (Subscriptions, Featured Listings, Ads)
+     │  Phase 2: Trust & Professionalism (Reviews, Doc Verification, Fraud)
+     │  Phase 1: Core MVP (Auth, Profiles, CRUD Listings, Basic Search)
+The system explicitly excludes direct escrow transaction handling and digital government deed transfers to align with current regulatory boundaries.
+1.3 Intended Audience
+This document is designed for the technical design team, product managers, quality assurance analysts, and localized payment gateway integration teams.
+1.4 Definitions, Acronyms & Abbreviations
+  ETB: Ethiopian Birr (official currency).
+  Woreda / Kebele: Local administrative divisions in Ethiopia. Woredas are equivalent to districts; Kebeles are neighborhoods.
+  Chapa / SantimPay: Local PCI-compliant payment gateways enabling mobile wallet and local card checkout.
+  CBE Birr / Telebirr: Major local mobile money wallets backed by Commercial Bank of Ethiopia and Ethio Telecom.
+  PostGIS: Open-source spatial database extension for PostgreSQL.
+
+2. Overall Description
+2.1 Product Perspective & Context
+Ethred operates as a modern cloud-native system. The application serves users through a responsive Progressive Web App (PWA) built with Next.js/React and native iOS/Android clients, interacting with a centralized REST/GraphQL API.
+flowchart TB
+    UserApp[Web/Mobile PWA Client] -->|HTTPS/WSS| APIGateway[API Gateway / Nginx]
+    APIGateway -->|RBAC Policy| AuthServ[Auth Service]
+    APIGateway -->|GraphQL/REST| CoreApp[Core Listing & Match API]
+    APIGateway -->|Real-time Socket| MsgApp[Communication & Chat Service]
+    APIGateway -->|Data Sync| AIServ[AI Scoring & Content Engine]
+    
+    CoreApp -->|Read/Write| PrimaryDBNode[(PostgreSQL + PostGIS DB)]
+    PrimaryDBNode -->|Async Replication| ReadReplica[(Read Replica DB)]
+    CoreApp -->|Read Cache| Redis[(Redis Cache)]
+    CoreApp -->|Write S3| FileStore[S3 Private Bucket / Cloudinary]
+    
+    AIServ --> VectorDB[(Vector DB / pgvector)]
+    
+    MsgApp --> RedisChat[(Redis PubSub)]
+    
+    CoreApp -->|Webhook| ChapaPay[Chapa / SantimPay API]
+    CoreApp -->|SMS Send| TelecomSMS[Local Ethio SMS Gateway]
+2.2 Product Vision & Business Goals
+Real estate listings in Ethiopia suffer from extreme informality, outdated details, fraudulent duplicates, and heavy reliance on unverified intermediary brokers ("delalas"). Ethred resolves this trust gap by introducing rigorous government-ID verification, verified agency profiles, automated listing quality ranking, and deep payment and language localization.
+2.3 Product Objectives & Target Metrics
+  High Performance: Home page loading speed must remain under 1.8 seconds on standard local 3G networks.
+  Trust Verification: 100% of premium/verified listings must carry cross-checked business registration licenses or Kebele land map uploads.
+  Local Payment Accessibility: Support 4+ domestic payment channels (Telebirr, CBE Birr, Chapa, SantimPay).
+2.4 User Persona Profiles & Classes
+Guest / Public Browser: Can search properties using map criteria, view details, and perform basic comparisons.
+Verified Buyer: Registered. Can save searches, request physical viewings, send chat messages, and leave reviews.
+Individual Seller: Owners or micro-brokers listing up to 3 properties. Can edit details, answer chats, and purchase individual promotion slots.
+Agency Admin: Operations manager of a brokerage. Can assign listings to specific Agency Agents, manage branches, and buy enterprise subscription tiers.
+Agency Agent: Employee of an agency. Can upload listings, communicate directly with buyers, and view listing statistics.
+Platform Moderator: Review and approve properties, flag scams, blacklist users, and evaluate document verifications.
+2.5 Operating Environment & Target Platforms
+  Web Frontend: React, Next.js (Version 14+), TailwindCSS, CSS Variables.
+  Mobile Clients: React Native / Flutter (Android 8.0+, iOS 15.0+).
+  Backend Services: Node.js/Express, Python/FastAPI for AI workloads.
+  Database Engine: PostgreSQL 16+ with PostGIS, pgvector.
+  Hosting: AWS/GCP or local enterprise servers behind cloud firewalls.
+2.6 Design & Implementation Constraints
+  Bandwidth Limitations: High-resolution video and images must be aggressively compressed on upload to fit constraints.
+  Address Inconsistency: Ethiopia does not use formal standardized street addresses. Search must rely on hierarchical dropdowns and nearest landmarks.
+  Payment Infrastructure: CBE Birr and Telebirr must process seamlessly over slow APIs.
+
+3. Functional Requirements (MoSCoW Matrix)
+All requirements are prioritized using the standard MoSCoW framework:
+  Must Have (M): Critical for Core MVP (Phase 1 & 2).
+  Should Have (S): Core experience enhancers (Phase 3 & 4).
+  Could Have (C): Non-critical/Nice-to-have features (Phase 5 & 6).
+  Won't Have (W): Deferred to future phases (Phase 8 & 9).
+3.1 Authentication & Authorization [Phase 1]
+  REQ-AUTH-01 [M]: The system shall register users via email/password, Google OAuth, or Phone Number (OTP).
+  REQ-AUTH-02 [M]: The system shall verify phone registrations using a 6-digit SMS OTP code valid for 5 minutes.
+  REQ-AUTH-03 [M]: The system shall enforce Role-Based Access Control (RBAC) across Buyer, Seller, Agency Admin, Agency Agent, and Platform Admin.
+  REQ-AUTH-04 [M]: The system shall force password complexity rules (minimum 8 characters, 1 number, 1 special character).
+  REQ-AUTH-05 [M]: Sessions shall use secure, HTTP-only JWT cookies with a sliding expiration of 7 days.
+3.2 User Management [Phase 1 & 2]
+  REQ-USER-01 [M]: Users shall be able to update profiles including avatar, legal name, phone number, and company information.
+  REQ-USER-02 [M]: Individual Sellers must upload a national ID (Liyu ID) or Passport image to activate listing permissions.
+  REQ-USER-03 [S]: Users shall be able to configure granular notifications (SMS, Email, Push) for chat messages and price drops.
+  REQ-USER-04 [M]: Agencies must upload a valid Ethiopian business registration certificate to request Agency Admin validation.
+3.3 Buyer & Discovery Module [Phase 1 & 4]
+  REQ-BUY-01 [M]: Registered Buyers shall be able to mark listings as "Favorites" and access them in a dedicated tab.
+  REQ-BUY-02 [S]: The system shall allow Buyers to select up to 3 listings and compare them side-by-side (price, size, room count, sub-city).
+  REQ-BUY-03 [M]: Buyers shall view a history of their "Recently Viewed" properties locally cached for offline recovery.
+3.4 Individual Seller Module [Phase 1 & 3]
+  REQ-SELL-01 [M]: Sellers shall be able to create listings, edit details, or save listings as "Draft" state.
+  REQ-SELL-02 [S]: Sellers shall access a dashboard showing view counts, favorite counts, and active buyer inquiry counts for each listing.
+  REQ-SELL-03 [S]: Sellers shall be able to purchase "Featured" status for a listing using local payment options.
+3.5 Agency Module [Phase 1, 3 & 6]
+  REQ-AGY-01 [M]: Agency Admins shall be able to invite team members via email/phone link.
+  REQ-AGY-02 [M]: Agency Admins shall assign ownership of specific listings to specific Agency Agents.
+  REQ-AGY-03 [S]: Agency Dashboards must aggregate listing analytics (clicks, leads) per individual agent and across the whole agency.
+3.6 Property Management Module [Phase 1]
+  REQ-PROP-01 [M]: The system shall process image uploads up to 10MB, auto-transcoding them to WebP with multiple responsive widths (400px, 800px, 1200px).
+  REQ-PROP-02 [M]: The system shall allow uploading of PDF attachments (deeds, maps, floor plans) up to 20MB.
+  REQ-PROP-03 [M]: Listings must contain: Title, description, price (ETB/USD), transaction type (Sale/Rent), category, size ($m^2$), bedrooms, bathrooms, and landmark references.
+3.7 Search, Discovery & Map Module [Phase 1, 4 & 7]
+  REQ-SRCH-01 [M]: Users shall be able to filter search results by City, Sub-City, Woreda, Price Range, Category, and size.
+  REQ-SRCH-02 [M]: Search results shall display on an interactive map using geographic pins clustering near high-density zones.
+  REQ-SRCH-03 [S]: Users shall be able to draw custom boundaries on the map to query listings within that polygon.
+3.8 Communication & In-App Chat [Phase 5]
+  REQ-COMM-01 [S]: The system shall support real-time chat between Buyers and Sellers using WebSockets.
+  REQ-COMM-02 [S]: The system shall generate deep-linked "Click-to-Chat on WhatsApp" links for listing details.
+  REQ-COMM-03 [M]: The system shall send transaction emails for listing approval, reset passwords, and payment confirmations.
+3.9 Trust & Verification Module [Phase 2]
+  REQ-VERI-01 [M]: Properties listed with verification documents must trigger a ticket in the Admin Panel for document evaluation.
+  REQ-VERI-02 [M]: Listings containing duplicate media or copy-pasted descriptions shall be automatically flagged for moderator review.
+  REQ-VERI-03 [S]: Buyers shall be able to report scam or duplicate listings, triggering suspension if 3+ independent flags are registered.
+3.10 AI Integration Module [Phase 2 & 9]
+  REQ-AI-01 [S]: The system shall generate optimized marketing titles and description copies in both English and Amharic based on core inputs.
+  REQ-AI-02 [S]: The system shall process uploaded photos through an automated image assessment model to reject blurry or highly watermarked images.
+  REQ-AI-03 [C]: The system shall host an interactive natural language interface (e.g., "Find me an apartment in Bole under 10M ETB").
+3.11 Localized Billing & Payments [Phase 3 & 7]
+  REQ-PAY-01 [M]: The system shall integrate Chapa and SantimPay APIs to handle payment checkout.
+  REQ-PAY-02 [M]: The system shall process payments via Telebirr, CBE Birr, cards (EthioPay, Visa, Mastercard), and local mobile wallets.
+  REQ-PAY-03 [M]: The system shall handle payment webhooks asynchronously to transition listing promotional states.
+
+4. External Interface Requirements
+4.1 User Interface (UI/UX Guidelines)
+The UI shall adapt to varying screen widths from 320px (mobile) to 1920px (desktop monitor). Layouts must maintain consistent margins (16px on mobile, 64px on desktop), utilize modern typography (Outfit / Inter for English, Nyala / Kefa for Amharic rendering), and follow strict dark mode specifications.
+┌────────────────────────────────────────────────────────┐
+│                        PALETTE                         │
+├────────────────────────────────────────────────────────┤
+│  Primary Gold:      #D4AF37 (Pantone Gold)             │
+│  Deep Charcoal:     #121212 (Dark Mode BG)             │
+│  Ethiopian Forest:  #0F2E1E (Rich Green Accent)        │
+│  Accent Gold:       #F9A602 (Highlights/OTP buttons)   │
+└────────────────────────────────────────────────────────┘
+4.2 API Gateway & JSON Web Interface Specs
+1. Initiate Phone OTP (`POST /api/v1/auth/register-phone`)
+  Request Payload:
+    {
+      "phone_number": "+251911223344",
+      "prefered_language": "am"
+    }
+  Response Payload (200 OK):
+    {
+      "success": true,
+      "message": "OTP verification code transmitted via SMS.",
+      "session_token": "otp_sess_8a2d109fbc"
+    }
+2. Confirm OTP & Authorize Session (`POST /api/v1/auth/verify-otp`)
+  Request Payload:
+    {
+      "session_token": "otp_sess_8a2d109fbc",
+      "verification_code": "581932"
+    }
+  Response Payload (200 OK):
+    {
+      "success": true,
+      "jwt": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "user": {
+        "id": "7ca64700-ee7e-4074-a63e-f8ff4cf19d45",
+        "phone_number": "+251911223344",
+        "role": "BUYER"
+      }
+    }
+3. Query Listing Catalog (`GET /api/v1/properties/search`)
+  Parameters:
+  region (string): e.g., "Addis Ababa"
+  sub_city (string): e.g., "Bole"
+  category (string): e.g., "APARTMENT"
+  price_min (decimal): e.g., 5000000.00
+  price_max (decimal): e.g., 12000000.00
+  bedrooms (integer): e.g., 2
+  Response Payload (200 OK):
+    {
+      "count": 1,
+      "results": [
+        {
+          "id": "908fde7c-9b5a-4e2b-ae80-ea10ff0293bd",
+          "title": "Modern Apartment in Bole",
+          "price_etb": 12500000.00,
+          "category": "APARTMENT",
+          "geom_point": {
+            "latitude": 9.001254,
+            "longitude": 38.784562
+          },
+          "nearest_landmark": "Edna Mall",
+          "thumbnail_url": "https://storage.ethred.com/properties/img_01.webp"
+        }
+      ]
+    }
+4. Local Payment Callback (`POST /api/v1/payments/chapa-webhook`)
+  Request Payload:
+    {
+      "event": "charge.success",
+      "data": {
+        "id": "chapa_tx_90812bd8f",
+        "tx_ref": "invoice_txn_9201f",
+        "amount": 2500.00,
+        "currency": "ETB",
+        "status": "success",
+        "metadata": {
+          "property_id": "908fde7c-9b5a-4e2b-ae80-ea10ff0293bd",
+          "promotion_tier": "HOMEPAGE_FEATURED"
+        }
+      }
+    }
+  Response Payload (200 OK):
+    {
+      "received": true
+    }
+4.3 Third-Party API Integrations
+Chapa API: Requires validation of the signature header x-chapa-signature using HMAC SHA256 hashing keys before handling the webhook.
+SMS OTP Gateway: Integrates with local SMS service providers via HTTPS POST containing the payload {"to": "+2519...", "text": "Your code is 581932"}.
+
+5. Database Architecture & Specifications
+5.1 System ERD (Entity Relationship Diagram)
+Please refer to Section 5.1 of srs.md for the visual database relational mapping.
+5.2 Complete Data Dictionary & SQL DDL Script
+This SQL script initializes the entire database schema for Phase 1 & 2.
+-- 1. Core Extensions Setup
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "postgis";
+
+-- 2. Enumerated Custom Types
+CREATE TYPE user_role AS ENUM ('BUYER', 'SELLER', 'AGENCY_ADMIN', 'AGENCY_AGENT', 'ADMIN');
+CREATE TYPE property_status AS ENUM ('DRAFT', 'PENDING', 'APPROVED', 'SUSPENDED', 'ARCHIVED');
+CREATE TYPE property_category AS ENUM ('HOUSE', 'APARTMENT', 'LAND', 'COMMERCIAL', 'OFFICE', 'WAREHOUSE', 'VACATION');
+CREATE TYPE transaction_type AS ENUM ('SALE', 'RENT');
+CREATE TYPE media_type AS ENUM ('IMAGE', 'VIDEO', 'DOCUMENT');
+CREATE TYPE payment_status AS ENUM ('PENDING', 'COMPLETED', 'FAILED', 'REFUNDED');
+
+-- 3. Core Tables Setup
+
+-- Users Table
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NULL,
+    phone_number VARCHAR(20) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role user_role NOT NULL DEFAULT 'BUYER',
+    is_phone_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    is_identity_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Profiles Table
+CREATE TABLE profiles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+    full_name VARCHAR(150) NOT NULL,
+    avatar_url VARCHAR(500),
+    preferred_language VARCHAR(5) DEFAULT 'en',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Agencies Table
+CREATE TABLE agencies (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    admin_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    agency_name VARCHAR(200) UNIQUE NOT NULL,
+    logo_url VARCHAR(500),
+    business_license_url VARCHAR(500) NOT NULL,
+    is_approved BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Agency Employees (Branch Agents mapping)
+CREATE TABLE agency_employees (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    agency_id UUID NOT NULL REFERENCES agencies(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+    assigned_role VARCHAR(50) DEFAULT 'AGENT',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Properties Table (utilizing geography types)
+CREATE TABLE properties (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    agency_id UUID REFERENCES agencies(id) ON DELETE SET NULL,
+    title_en VARCHAR(255) NOT NULL,
+    title_am VARCHAR(255),
+    description_en TEXT NOT NULL,
+    description_am TEXT,
+    price_etb DECIMAL(15,2) NOT NULL CHECK (price_etb >= 0),
+    price_usd DECIMAL(15,2) CHECK (price_usd >= 0),
+    transaction_mode transaction_type NOT NULL DEFAULT 'SALE',
+    category property_category NOT NULL DEFAULT 'HOUSE',
+    geom_point GEOGRAPHY(Point, 4326),
+    region VARCHAR(100) NOT NULL,
+    city VARCHAR(100) NOT NULL,
+    sub_city VARCHAR(100) NOT NULL,
+    woreda VARCHAR(100) NOT NULL,
+    kebele VARCHAR(100),
+    nearest_landmark VARCHAR(255),
+    bedrooms INTEGER DEFAULT 0 CHECK (bedrooms >= 0),
+    bathrooms INTEGER DEFAULT 0 CHECK (bathrooms >= 0),
+    area_sqm DECIMAL(10,2) NOT NULL CHECK (area_sqm > 0),
+    status property_status NOT NULL DEFAULT 'DRAFT',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Property Media Table
+CREATE TABLE property_media (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+    file_url VARCHAR(500) NOT NULL,
+    media_category media_type NOT NULL DEFAULT 'IMAGE',
+    sort_order INT DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Property Amenities Join Table
+CREATE TABLE property_amenities (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+    amenity_name VARCHAR(100) NOT NULL,
+    UNIQUE(property_id, amenity_name)
+);
+
+-- Property Inquiries Table
+CREATE TABLE property_inquiries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+    buyer_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    message TEXT NOT NULL,
+    status VARCHAR(50) DEFAULT 'NEW',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- User Favorites Table
+CREATE TABLE user_favorites (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, property_id)
+);
+
+-- Invoices & Billings Table
+CREATE TABLE billing_invoices (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    amount DECIMAL(10,2) NOT NULL,
+    currency VARCHAR(10) DEFAULT 'ETB',
+    tx_ref VARCHAR(100) UNIQUE NOT NULL,
+    payment_processor VARCHAR(50) NOT NULL DEFAULT 'CHAPA',
+    status payment_status NOT NULL DEFAULT 'PENDING',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Audit Logs Table
+CREATE TABLE audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    actor_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    action VARCHAR(100) NOT NULL,
+    target_table VARCHAR(100) NOT NULL,
+    target_id UUID,
+    old_values JSONB,
+    new_values JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+6. Non-Functional Requirements (NFR)
+Please see Section 6 of srs.md for detailed performance metrics, low-bandwidth WebP configurations, and cryptographic hash protocols.
+
+7. System Architecture & Deployment Topology
+7.3 Real-time Notification Engine Pipeline
+To bypass flaky networks and deliver timely communication:
+WebSocket Server Pool: Manages open Socket connections for active users.
+Redis PubSub Engine: Synchronizes chat events across stateless server containers.
+Firebase Cloud Messaging (FCM): Delivers push messages to closed client windows.
+Local SMS Failover: If a user remains offline for 15+ minutes after receiving an inquiry, the platform sends a localized text notification (Amharic) to their registered phone number.
+
+8. Business Rules & State Transitions
+8.3 Payment and Promotion State Workflows
+   ┌───────────────┐        Chapa Initiated Check       ┌───────────────┐
+   │  Invoice is   ├───────────────────────────────────►│ Payment Gateway │
+   │   'PENDING'   │                                    │   Checkout    │
+   └───────┬───────┘                                    └───────┬───────┘
+           │                                                    │
+           │ Timeout (24h)                                      │ Webhook Response
+           ▼                                                    ▼
+   ┌───────────────┐                                    ┌───────────────┐
+   │  Invoice is   │                                    │  Invoice is   │
+   │   'FAILED'    │                                    │  'COMPLETED'  │
+   └───────────────┘                                    └───────┬───────┘
+                                                                │
+                                                                │ Activates Promo
+                                                                ▼
+                                                        ┌───────────────┐
+                                                        │Listing Tagged │
+                                                        │  'FEATURED'   │
+                                                        └───────────────┘
+
+9. Use Case Scenarios & User Stories
+Please refer to Section 9 of the primary SRS file for detailed Gherkin scenarios.
+
+10. Testing Requirements
+10.1 Unit Testing Strategy
+  Backend: Minimum 80% code coverage using Jest or PyTest. All utility helpers (e.g., location parser, currency converter, JWT verification) must hit 100% path coverage.
+  Frontend: Core hooks and rendering components must be validated using React Testing Library.
+10.2 Integration & API Testing
+  API endpoint tests must run in CI/CD pipelines on Docker-hosted database snapshots, validating schema response validation rules.
+10.3 Performance & Load Testing Parameters
+  Load Tool: k6.
+  Scenario: 10,000 requests/minute distributed across map search queries. Peak CPU usage on the API servers must remain below 60%, and database CPU must stay below 50%.
+
+11. Future Enhancements & Roadmap
+  Phase 8 Expansion: Introduces auction mechanisms, home security integrations, CBE mortgage calculators, and digital rental portals.
+  Phase 9 Super Premium: Adds 3D virtual room tours, Walkability scoring calibrated to Ethiopian urban centers (proximity to public transport/landmark clusters), and AI chat interfaces.
+
+12. Appendices & Traceability Matrix
+Please reference Section 10 of the primary srs.md file for the comprehensive Traceability mappings.
+Document Reference: | SRS-ETHRED-2026-V1.0 | 
+Version: | 1.0 (Enterprise Specification) | 
+Date: | July 2026 | 
+Status: | Ready for Review | 

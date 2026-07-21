@@ -1,0 +1,40 @@
+
+services:
+  # ── PostgreSQL 16 with PostGIS ──────────────────────
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: ethred_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ethred_user
+      POSTGRES_PASSWORD: ethred_pass
+      POSTGRES_DB: ethred_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ethred_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ethred_user -d ethred_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ───────────────────────────────────────────
+  redis:
+    image: redis:7.2-alpine
+    container_name: ethred_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - ethred_redisdata:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  ethred_pgdata:
+  ethred_redisdata:
