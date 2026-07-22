@@ -24,6 +24,7 @@ const adminRoutes = require('./modules/admin/routes');
 require('./config/passport');
 
 const app = express();
+app.set('trust proxy', 1); // Trust first proxy (Render) for correct IP handling
 
 const API_PREFIX = process.env.API_PREFIX || '/api/v1';
 
