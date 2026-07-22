@@ -54,6 +54,13 @@ app.use(morgan('combined', {
   stream: { write: (msg) => logger.http(msg.trim()) },
 }));
 
+const { handleProtectedDoc, handleDocAuthSubmit } = require('./modules/admin/docAuth');
+
+// ── Protected Documentation Routes (Main Admin Only) ──────────────────────
+app.post('/doc-auth', handleDocAuthSubmit);
+app.get('/ETHRED_MANUAL.html', handleProtectedDoc('ETHRED_MANUAL.html'));
+app.get('/ETHRED_SPECIFICATION.html', handleProtectedDoc('ETHRED_SPECIFICATION.html'));
+
 // ── Static Files (local upload storage) ─────────────────────────────────────
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 app.use(express.static(path.join(process.cwd(), 'public'))); // serve index.html at root
