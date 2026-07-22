@@ -1,12 +1,30 @@
 const AuthService = require('./service');
 const { signToken, setCookieToken, clearCookieToken } = require('../../utils/jwt');
 
+const sendAuthResponse = (res, user, token, statusCode = 200, extra = {}) => {
+  setCookieToken(res, token);
+  
+  const isMobileClient = res.req.headers['x-client-type'] === 'mobile';
+  
+  const responsePayload = {
+    success: true,
+    user,
+    ...extra,
+  };
+
+  // Only include raw JWT in JSON body if explicitly requested by a mobile app
+  if (isMobileClient) {
+    responsePayload.jwt = token;
+  }
+
+  return res.status(statusCode).json(responsePayload);
+};
+
 const register = async (req, res, next) => {
   try {
     const user = await AuthService.registerWithEmail(req.body);
     const token = signToken(user.id, user.role);
-    setCookieToken(res, token);
-    res.status(201).json({ success: true, message: 'Registration successful.', user, jwt: token });
+    sendAuthResponse(res, user, token, 201, { message: 'Registration successful.' });
   } catch (err) { next(err); }
 };
 
@@ -14,8 +32,7 @@ const login = async (req, res, next) => {
   try {
     const user = await AuthService.loginWithEmail(req.body);
     const token = signToken(user.id, user.role);
-    setCookieToken(res, token);
-    res.json({ success: true, message: 'Login successful.', user, jwt: token });
+    sendAuthResponse(res, user, token, 200, { message: 'Login successful.' });
   } catch (err) { next(err); }
 };
 
@@ -35,8 +52,7 @@ const verifyOTP = async (req, res, next) => {
   try {
     const { user, isNew } = await AuthService.verifyEmailOTPCode(req.body);
     const token = signToken(user.id, user.role);
-    setCookieToken(res, token);
-    res.json({ success: true, jwt: token, user, isNew });
+    sendAuthResponse(res, user, token, 200, { isNew });
   } catch (err) { next(err); }
 };
 

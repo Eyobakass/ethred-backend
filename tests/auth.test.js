@@ -65,7 +65,7 @@ describe('POST /api/v1/auth/register', () => {
     expect(res.statusCode).toBe(201);
     expect(res.body.success).toBe(true);
     expect(res.body.user).toBeDefined();
-    expect(res.body.jwt).toBeDefined();
+    expect(res.headers['set-cookie']).toBeDefined();
   });
 
   it('should reject weak password', async () => {

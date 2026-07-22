@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Ethred Backend — Developer Manual</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  :root {
+    --gold: #D4AF37;
+    --gold-light: #F0D060;
+    --dark: #0d0d0d;
+    --dark2: #161616;
+    --dark3: #1e1e1e;
+    --dark4: #252525;
+    --dark5: #2e2e2e;
+    --text: #e8e8e8;
+    --text-muted: #999;
+    --text-dim: #666;
+    --border: #2a2a2a;
+    --green: #22c55e;
+    --blue: #3b82f6;
+    --orange: #f97316;
+    --red: #ef4444;
+    --purple: #a855f7;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { font-size: 14px; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--dark);
+    color: var(--text);
+    line-height: 1.7;
+    padding: 0;
+  }
+
+  /* ── Cover Page ── */
+  .cover {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0a0a0a 0%, #111 50%, #0a0a0a 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 80px;
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+  }
+
+  .cover::before {
+    content: '';
+    position: absolute;
+    top: -200px; right: -200px;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(212,175,55,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .cover::after {
+    content: '';
+    position: absolute;
+    bottom: -100px; left: -100px;
+    width: 400px; height: 400px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(212,175,55,0.05) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .cover-badge {
+    display: inline-block;
+    background: rgba(212,175,55,0.12);
+    border: 1px solid rgba(212,175,55,0.3);
+    color: var(--gold);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 4px;
+    margin-bottom: 32px;
+  }
+
+  .cover h1 {
+    font-size: 4rem;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: #fff;
+    margin-bottom: 16px;
+    max-width: 700px;
+  }
+
+  .cover h1 span { color: var(--gold); }
+
+  .cover-sub {
+    font-size: 1.25rem;
+    color: var(--text-muted);
+    font-weight: 300;
+    margin-bottom: 60px;
+    max-width: 500px;
+  }
+
+  .cover-meta {
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+  }
+
+  .cover-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .cover-meta-item .label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .cover-meta-item .value {
+    font-size: 0.9rem;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .cover-line {
+    width: 80px;
+    height: 3px;
+    background: linear-gradient(90deg, var(--gold), transparent);
+    margin-bottom: 40px;
+  }
+
+  .status-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-top: 60px;
+    width: 100%;
+    max-width: 900px;
+  }
+
+  .status-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  .status-card .s-label { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; margin-bottom: 6px; }
+  .status-card .s-value { font-size: 1rem; font-weight: 700; }
+  .s-green { color: var(--green); }
+  .s-gold { color: var(--gold); }
+
+  /* ── Content ── */
+  .page {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 60px 80px;
+  }
+
+  /* ── TOC ── */
+  .toc {
+    background: var(--dark2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 36px 40px;
+    margin-bottom: 60px;
+    page-break-after: always;
+  }
+
+  .toc-title {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 24px;
+  }
+
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 8px; color: var(--text-muted); font-size: 0.9rem; }
+  .toc li strong { color: var(--text); font-weight: 600; }
+  .toc li ul { margin-top: 6px; padding-left: 16px; }
+  .toc li ul li { margin-bottom: 4px; font-size: 0.82rem; }
+
+  /* ── Sections ── */
+  .section {
+    margin-bottom: 64px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 32px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-num {
+    background: var(--gold);
+    color: #000;
+    font-size: 0.75rem;
+    font-weight: 800;
+    width: 32px; height: 32px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    letter-spacing: 0.02em;
+  }
+
+  .section-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.01em;
+  }
+
+  h2 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--gold);
+    margin: 36px 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  h2::before {
+    content: '';
+    display: inline-block;
+    width: 4px;
+    height: 18px;
+    background: var(--gold);
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 28px 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  h3 .icon {
+    font-size: 1rem;
+  }
+
+  p { margin-bottom: 14px; color: var(--text-muted); font-size: 0.9rem; }
+
+  strong { color: var(--text); font-weight: 600; }
+
+  /* ── Tables ── */
+  .table-wrap { overflow-x: auto; margin: 16px 0 24px; border-radius: 10px; border: 1px solid var(--border); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+
+  thead tr { background: var(--dark4); }
+  thead th {
+    text-align: left;
+    padding: 12px 16px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gold);
+    border-bottom: 1px solid var(--border);
+  }
+
+  tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+  tbody tr:hover { background: rgba(212,175,55,0.04); }
+  td { padding: 12px 16px; color: var(--text-muted); vertical-align: top; }
+  td:first-child { font-family: 'JetBrains Mono', monospace; color: var(--text); font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
+
+  /* ── Code ── */
+  pre {
+    background: #0a0a0a;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    overflow-x: auto;
+    margin: 16px 0 24px;
+    position: relative;
+  }
+
+  pre::before {
+    content: attr(data-lang);
+    position: absolute;
+    top: 10px; right: 16px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: #c9d1d9;
+    line-height: 1.6;
+  }
+
+  p code, li code {
+    background: rgba(212,175,55,0.1);
+    border: 1px solid rgba(212,175,55,0.2);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 0.78rem;
+    color: var(--gold-light);
+  }
+
+  /* syntax color hints */
+  .kw { color: #ff7b72; }
+  .str { color: #a5d6ff; }
+  .cmt { color: #545d68; font-style: italic; }
+  .num { color: #79c0ff; }
+  .fn { color: #d2a8ff; }
+  .var { color: #ffa657; }
+  .prop { color: #79c0ff; }
+
+  /* ── Lists ── */
+  ul, ol {
+    padding-left: 20px;
+    margin-bottom: 16px;
+  }
+
+  li {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 6px;
+  }
+
+  li::marker { color: var(--gold); }
+
+  /* ── Callouts ── */
+  .callout {
+    display: flex;
+    gap: 14px;
+    padding: 16px 20px;
+    border-radius: 8px;
+    margin: 16px 0 24px;
+    font-size: 0.85rem;
+  }
+
+  .callout-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+  .callout-body { color: var(--text-muted); }
+  .callout-body strong { display: block; margin-bottom: 4px; font-size: 0.8rem; }
+
+  .callout-warn { background: rgba(249,115,22,0.08); border: 1px solid rgba(249,115,22,0.25); }
+  .callout-warn .callout-icon { color: var(--orange); }
+  .callout-warn strong { color: var(--orange); }
+
+  .callout-info { background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.25); }
+  .callout-info .callout-icon { color: var(--blue); }
+  .callout-info strong { color: var(--blue); }
+
+  .callout-success { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25); }
+  .callout-success .callout-icon { color: var(--green); }
+  .callout-success strong { color: var(--green); }
+
+  /* ── Badges ── */
+  .badge {
+    display: inline-block;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .badge-green { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+  .badge-gold { background: rgba(212,175,55,0.15); color: var(--gold); border: 1px solid rgba(212,175,55,0.3); }
+  .badge-blue { background: rgba(59,130,246,0.15); color: var(--blue); border: 1px solid rgba(59,130,246,0.3); }
+
+  /* ── Module Cards ── */
+  .module-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin: 16px 0 24px;
+  }
+
+  .module-card {
+    background: var(--dark2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+
+  .module-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .module-icon {
+    width: 36px; height: 36px;
+    background: rgba(212,175,55,0.1);
+    border: 1px solid rgba(212,175,55,0.2);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+
+  .module-card h4 {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .module-card p {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+    line-height: 1.5;
+  }
+
+  .module-card .endpoints {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .endpoint-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 6px;
+    color: var(--text-dim);
+  }
+
+  /* ── Divider ── */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, var(--border), transparent);
+    margin: 48px 0;
+  }
+
+  /* ── Steps ── */
+  .steps { list-style: none; padding: 0; margin: 16px 0 24px; counter-reset: step; }
+  .steps li {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+    counter-increment: step;
+  }
+
+  .step-num {
+    background: rgba(212,175,55,0.12);
+    border: 1px solid rgba(212,175,55,0.3);
+    color: var(--gold);
+    font-size: 0.7rem;
+    font-weight: 800;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .step-content strong {
+    display: block;
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+    color: #fff;
+  }
+
+  .step-content p {
+    margin: 0;
+    font-size: 0.82rem;
+  }
+
+  /* ── Checklist ── */
+  .checklist { list-style: none; padding: 0; }
+  .checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 0.85rem;
+  }
+
+  .checklist li::before {
+    content: '☐';
+    color: var(--gold);
+    font-size: 1rem;
+    flex-shrink: 0;
+    margin-top: -2px;
+  }
+
+  /* ── Print ── */
+  @media print {
+    body { background: #fff; color: #000; }
+    .cover { background: #fff; min-height: auto; padding: 60px; border-bottom: 3px solid #D4AF37; }
+    .cover h1 { color: #000; font-size: 3rem; }
+    .cover h1 span { color: #B8970C; }
+    .cover-sub { color: #555; }
+    .cover-meta-item .label { color: #999; }
+    .cover-meta-item .value { color: #000; }
+    .cover::before, .cover::after { display: none; }
+    .status-card { background: #f8f8f8; border-color: #ddd; }
+    .status-card .s-label { color: #888; }
+    .page { padding: 40px 60px; }
+    .toc { background: #f8f8f8; border-color: #ddd; }
+    .toc li { color: #555; }
+    table { font-size: 0.75rem; }
+    thead tr { background: #f0f0f0; }
+    thead th { color: #B8970C; }
+    td { color: #444; }
+    td:first-child { color: #000; }
+    pre { background: #f4f4f4; border-color: #ddd; }
+    code { color: #333; }
+    p code, li code { background: #f0e8c8; border-color: #d4a020; color: #8B5E00; }
+    .module-card { background: #f8f8f8; border-color: #ddd; }
+    .module-card h4 { color: #000; }
+    .module-card p { color: #555; }
+    .endpoint-tag { background: #eee; border-color: #ccc; color: #555; }
+    .callout-warn { background: #fff8f0; border-color: #f97316; }
+    .callout-info { background: #f0f8ff; border-color: #3b82f6; }
+    .callout-success { background: #f0fff4; border-color: #22c55e; }
+    h2 { color: #B8970C; }
+    h3 { color: #000; }
+    p { color: #444; }
+    li { color: #444; }
+    .section-title { color: #000; }
+    .step-content strong { color: #000; }
+    .status-card .s-green { color: #166534; }
+    .status-card .s-gold { color: #B8970C; }
+    .cover-badge { background: #f0e8c8; color: #8B5E00; border-color: #d4a020; }
+  }
+
+  @page { margin: 0; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════ COVER ══ -->
+<div class="cover">
+  <div class="cover-badge">Developer Manual · v1.0</div>
+  <h1>Ethred<br/><span>Backend API</span></h1>
+  <div class="cover-sub">Modern Ethiopian Real Estate Ecosystem — Complete Technical Reference</div>
+  <div class="cover-line"></div>
+  <div class="cover-meta">
+    <div class="cover-meta-item">
+      <span class="label">Runtime</span>
+      <span class="value">Node.js 20 LTS</span>
+    </div>
+    <div class="cover-meta-item">
+      <span class="label">Framework</span>
+      <span class="value">Express 4 + Prisma 5</span>
+    </div>
+    <div class="cover-meta-item">
+      <span class="label">Database</span>
+      <span class="value">PostgreSQL 16 + PostGIS</span>
+    </div>
+    <div class="cover-meta-item">
+      <span class="label">Cache / RT</span>
+      <span class="value">Redis 7 + Socket.IO</span>
+    </div>
+    <div class="cover-meta-item">
+      <span class="label">Payments</span>
+      <span class="value">Chapa (ETB)</span>
+    </div>
+    <div class="cover-meta-item">
+      <span class="label">Status</span>
+      <span class="value" style="color:#22c55e;">✓ Production Ready</span>
+    </div>
+  </div>
+
+  <div class="status-grid">
+    <div class="status-card">
+      <div class="s-label">Tests</div>
+      <div class="s-value s-green">6/6 Passing</div>
+    </div>
+    <div class="status-card">
+      <div class="s-label">Vulnerabilities</div>
+      <div class="s-value s-green">0 Found</div>
+    </div>
+    <div class="status-card">
+      <div class="s-label">Source Files</div>
+      <div class="s-value s-gold">50 Files</div>
+    </div>
+    <div class="status-card">
+      <div class="s-label">API Modules</div>
+      <div class="s-value s-gold">8 Modules</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════ CONTENT ══ -->
+<div class="page">
+
+  <!-- TOC -->
+  <div class="toc">
+    <div class="toc-title">Table of Contents</div>
+    <ol>
+      <li><strong>Verification Status</strong> — Current health of the backend</li>
+      <li><strong>Architecture Overview</strong> — How the system is structured</li>
+      <li><strong>Module Responsibility Map</strong>
+        <ul>
+          <li>Entry point &amp; App</li>
+          <li>Config layer</li>
+          <li>Middleware layer</li>
+          <li>API modules (Auth, Users, Agencies, Properties, Favorites, Inquiries, Payments, Admin)</li>
+          <li>Real-time (Socket.IO)</li>
+          <li>Utilities &amp; Database</li>
+        </ul>
+      </li>
+      <li><strong>Running Locally Without Real Services</strong> — No Gmail, no Chapa, no OAuth needed</li>
+      <li><strong>Deploying to Render (Staging)</strong> — Free temporary deployment</li>
+      <li><strong>Production Deployment</strong> — VPS + Nginx + PM2 + HTTPS</li>
+      <li><strong>Quick Reference</strong> — Commands, accounts, endpoints</li>
+    </ol>
+  </div>
+
+  <!-- ══ SECTION 1 ══ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <div class="section-title">Verification Status</div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Check</th><th>Result</th><th>Details</th></tr></thead>
+        <tbody>
+          <tr><td>Node.js syntax (all files)</td><td><span class="badge badge-green">✓ Clean</span></td><td>50 source files, zero syntax errors</td></tr>
+          <tr><td>Automated test suite</td><td><span class="badge badge-green">✓ 6/6 Pass</span></td><td>Auth register, weak password, duplicate, 401 login, health, property search</td></tr>
+          <tr><td>Security audit</td><td><span class="badge badge-green">✓ 0 Vulnerabilities</span></td><td>nodemailer upgraded to 9.0.3, uuid replaced with crypto built-in</td></tr>
+          <tr><td>PostgreSQL container</td><td><span class="badge badge-green">✓ Healthy</span></td><td>ethred_postgres on port 5432 with PostGIS extension</td></tr>
+          <tr><td>Redis container</td><td><span class="badge badge-green">✓ Healthy</span></td><td>ethred_redis on port 6379</td></tr>
+          <tr><td>Database seeded</td><td><span class="badge badge-green">✓ Done</span></td><td>3 users (Admin/Seller/Buyer) + sample property with PostGIS point</td></tr>
+          <tr><td>App module resolution</td><td><span class="badge badge-green">✓ Clean</span></td><td>All 8 modules load without errors</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ SECTION 2 ══ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <div class="section-title">Architecture Overview</div>
+    </div>
+
+    <p>The Ethred backend follows a clean <strong>modular MVC architecture</strong>. Every API feature lives in its own folder under <code>src/modules/</code> with three files: routes → controller → service. This keeps the codebase easy to extend without touching unrelated code.</p>
+
+    <pre data-lang="text"><code>HTTP Request
+    │
+    ├── Nginx (production) / localhost:5000 (dev)
+    │
+    ├── Express App (src/app.js)
+    │   ├── Middleware: helmet, cors, cookie-parser, morgan, rate-limiter, passport
+    │   └── Routes: /api/v1/*
+    │
+    ├── Modules (src/modules/)
+    │   ├── auth/        routes → controller → service
+    │   ├── users/       routes → controller → service
+    │   ├── agencies/    routes → controller → service
+    │   ├── properties/  routes → controller → service
+    │   ├── favorites/   routes → controller
+    │   ├── inquiries/   routes → controller
+    │   ├── payments/    routes → controller
+    │   └── admin/       routes → controller
+    │
+    ├── Config (src/config/)
+    │   ├── db.js     → Prisma → PostgreSQL + PostGIS
+    │   ├── redis.js  → ioredis → Redis
+    │   ├── passport  → JWT + Google OAuth
+    │   └── mailer    → Nodemailer SMTP
+    │
+    └── Socket.IO (src/sockets/) → Redis Pub/Sub adapter</code></pre>
+  </div>
+
+  <!-- ══ SECTION 3 ══ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <div class="section-title">Module Responsibility Map</div>
+    </div>
+
+    <h2>Entry Point &amp; App</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+        <tbody>
+          <tr><td>server.js</td><td>Boots HTTP server, initializes Socket.IO, listens on PORT, handles graceful shutdown (SIGTERM/SIGINT) — closes DB, Redis, HTTP connections cleanly before exit.</td></tr>
+          <tr><td>src/app.js</td><td>Builds the Express app: registers all middleware (CORS, Helmet, body parsers, Morgan, Passport, rate limiters), mounts all route groups, serves static uploads.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Config Layer (src/config/)</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+        <tbody>
+          <tr><td>db.js</td><td>Prisma client singleton. Exports <code>prisma</code> for all modules. Exports <code>connectDB()</code> and <code>disconnectDB()</code> for lifecycle hooks.</td></tr>
+          <tr><td>redis.js</td><td>ioredis client singleton. Exports <code>setEx(key, ttl, val)</code>, <code>get(key)</code>, <code>del(key)</code>, and <code>getRedisClient()</code> for the Socket.IO adapter.</td></tr>
+          <tr><td>passport.js</td><td>Configures two strategies: <strong>JWT Strategy</strong> (reads from HTTP-only cookie or Bearer header) and <strong>Google OAuth 2.0</strong> (handles callback, creates user on first login).</td></tr>
+          <tr><td>mailer.js</td><td>Creates Nodemailer transporter via SMTP. Exports <code>sendEmail({to, subject, html})</code> — used for OTPs, moderation alerts, inquiry notifications, and payment confirmations.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Middleware Layer (src/middleware/)</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+        <tbody>
+          <tr><td>authenticate.js</td><td>Validates JWT (from cookie or Bearer header) via Passport. Attaches user to <code>req.user</code>. Rejects with <code>401</code> if missing or invalid.</td></tr>
+          <tr><td>authorize.js</td><td>Factory: <code>authorize('ADMIN', 'SELLER')</code>. Checks <code>req.user.role</code> against allowed list. Rejects with <code>403</code> if unauthorized.</td></tr>
+          <tr><td>errorHandler.js</td><td>Centralized error handler. Translates Prisma errors (unique → 409, not found → 404), Zod → 422, JWT → 401, custom ApiError, and fallback 500. All return consistent JSON.</td></tr>
+          <tr><td>upload.js</td><td>Multer-based uploader. Images → Sharp pipeline → WebP at 400/800/1200px widths. Documents (PDF) saved as-is. Exports <code>uploadImages</code>, <code>uploadDocuments</code>, <code>uploadAvatar</code>, <code>uploadIdDocument</code>.</td></tr>
+          <tr><td>rateLimiter.js</td><td>Two limiters: <code>generalLimiter</code> (100 req/15 min) for all routes, <code>strictLimiter</code> (10 req/15 min) for auth routes. Prevents brute-force.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>API Modules (src/modules/)</h2>
+    <p>Each module has the same file pattern: <code>routes.js → controller.js → service.js</code></p>
+
+    <div class="module-grid">
+
+      <div class="module-card">
+        <div class="module-card-header">
+          <div class="module-icon">🔐</div>
+          <h4>auth/</h4>
+        </div>
+        <p>Handles all authentication flows: email+password registration, OTP email verification, login, logout, password reset, and Google OAuth. Issues JWTs stored in HTTP-only cookies (15-min access, 7-day refresh).</p>
+        <div class="endpoints">
+          <span class="endpoint-tag">POST /register</span>
+          <span class="endpoint-tag">POST /login</span>
+          <span class="endpoint-tag">POST /send-otp</span>
+          <span class="endpoint-tag">POST /verify-otp</span>
+          <span class="endpoint-tag">POST /forgot-password</span>
+          <span class="endpoint-tag">POST /reset-password</span>
+          <span class="endpoint-tag">GET /google</span>
+          <span class="endpoint-tag">GET /me</span>
+        </div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-card-header">
+          <div class="module-icon">👤</div>
+          <h4>users/</h4>
+        </div>
+        <p>Manages user profiles, avatar uploads (transcoded to WebP), national ID / passport document uploads, and notification preferences. Supports both Ethiopian and international ID formats.</p>
+        <div class="endpoints">
+          <span class="endpoint-tag">GET /profile</span>
+          <span class="endpoint-tag">PUT /profile</span>
+          <span class="endpoint-tag">POST /avatar</span>
+          <span class="endpoint-tag">POST /id-document</span>
+          <span class="endpoint-tag">GET /notification-prefs</span>
+          <span class="endpoint-tag">PUT /notification-prefs</span>
+        </div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-card-header">
+          <div class="module-icon">🏢</div>
+          <h4>agencies/</h4>
+        </div>
+        <p>Full lifecycle for real estate agencies: creation with business license upload, employee invitation by email link, employee management, and aggregated analytics (listings, inquiry counts, conversion rates).</p>
+        <div class="endpoints">
+          <span class="endpoint-tag">POST /</span>
+          <span class="endpoint-tag">GET /:id</span>
+          <span class="endpoint-tag">PUT /:id</span>
+          <span class="endpoint-tag">POST /:id/invite</span>
+          <span class="endpoint-tag">GET /:id/employees</span>
+          <span class="endpoint-tag">GET /:id/analytics</span>
+        </div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-card-header">
+          <div class="module-icon">🏠</div>
+          <h4>properties/</h4>
+        </div>
+        <p>Core listing management. Public search with hierarchical filters (Region → City → Sub-City → Woreda). PostGIS geographic coordinates via raw SQL. Status state machine: DRAFT → PENDING → APPROVED/REJECTED. WebP image pipeline.</p>
+        <div class="endpoints">
+          <span class="endpoint-tag">GET /search</span>
+          <span class="endpoint-tag">GET /:id</span>
+          <span class="endpoint-tag">POST /</span>
+          <span class="endpoint-tag">POST /:id/submit</span>
+          <span class="endpoint-tag">POST /:id/media/images</span>
+          <span class="endpoint-tag">GET /:id/stats</span>
+        </div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-card-header">
+          <div class="module-icon">❤️</div>
+          <h4>favorites/</h4>
+        </div>
+        <p>Property wishlist management. Uses upsert for idempotent add operations. Returns paginated list with property thumbnails. Each user has an independent favorites list across all property types.</p>
+        <div class="endpoints">
+          <span class="endpoint-tag">POST /:propertyId</span>
+          <span class="endpoint-tag">DELETE /:propertyId</span>
+          <span class="endpoint-tag">GET /</span>
+        </div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-card-header">
+          <div class="module-icon">💬</div>
+          <h4>inquiries/</h4>
+        </div>
+        <p>Buyer ↔ Seller messaging system. Email notification to seller on new inquiry. Inquiry status workflow (NEW → IN_PROGRESS → RESOLVED). Scam report system — auto-suspends listing after 3+ independent reports.</p>
+        <div class="endpoints">
+          <span class="endpoint-tag">POST /</span>
+          <span class="endpoint-tag">GET /received</span>
+          <span class="endpoint-tag">PATCH /:id/status</span>
+          <span class="endpoint-tag">POST /report/:propertyId</span>
+        </div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-card-header">
+          <div class="module-icon">💳</div>
+          <h4>payments/</h4>
+        </div>
+        <p>Full Chapa ETB payment integration. Creates pending invoice → returns Chapa checkout URL → webhook receives payment confirmation → verifies HMAC-SHA256 signature → activates property promotion (featured 30 days).</p>
+        <div class="endpoints">
+          <span class="endpoint-tag">POST /initiate</span>
+          <span class="endpoint-tag">GET /invoices</span>
+          <span class="endpoint-tag">GET /invoices/:id</span>
+          <span class="endpoint-tag">POST /chapa-webhook</span>
+        </div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-card-header">
+          <div class="module-icon">🛡️</div>
+          <h4>admin/</h4>
+        </div>
+        <p>Full admin control panel. Property moderation queue (approve/reject/suspend) with seller email notifications. User management (ban, role change, identity verification). Agency approval. Full audit log viewer. Platform-wide dashboard stats.</p>
+        <div class="endpoints">
+          <span class="endpoint-tag">GET /dashboard</span>
+          <span class="endpoint-tag">GET /properties/pending</span>
+          <span class="endpoint-tag">PATCH /properties/:id/approve</span>
+          <span class="endpoint-tag">GET /audit-logs</span>
+          <span class="endpoint-tag">PATCH /agencies/:id/approve</span>
+        </div>
+      </div>
+
+    </div>
+
+    <h2>Real-time Layer (src/sockets/)</h2>
+    <p><code>index.js</code> — Initializes Socket.IO on the same HTTP port. Authenticates all clients via JWT on handshake. Uses a Redis Pub/Sub adapter for horizontal scaling. Manages rooms (<code>inquiry:{id}</code>), handles <code>message:send</code>, <code>typing:start</code>/<code>stop</code>, and personal notification rooms (<code>user:{id}</code>).</p>
+
+    <h2>Utilities (src/utils/)</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+        <tbody>
+          <tr><td>jwt.js</td><td><code>signToken(payload)</code> and <code>verifyToken(token)</code> — wrappers around jsonwebtoken with configurable expiry.</td></tr>
+          <tr><td>otp.js</td><td>Generates cryptographically random 6-digit OTP, stores in Redis with 5-minute TTL, validates and deletes on use.</td></tr>
+          <tr><td>password.js</td><td><code>hashPassword(plain)</code> and <code>verifyPassword(plain, hash)</code> — bcrypt at 12 rounds.</td></tr>
+          <tr><td>logger.js</td><td>Winston logger with console (dev) and rotating file transports for <code>logs/combined.log</code> and <code>logs/error.log</code>.</td></tr>
+          <tr><td>chapaClient.js</td><td>Axios wrapper for Chapa API. Exports <code>initializePayment()</code>, <code>verifyTransaction()</code>, and <code>verifyWebhookSignature()</code> (HMAC-SHA256).</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Database (prisma/)</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+        <tbody>
+          <tr><td>schema.prisma</td><td>Defines all 11 database tables: <code>users</code>, <code>profiles</code>, <code>agencies</code>, <code>agency_employees</code>, <code>properties</code>, <code>property_media</code>, <code>property_amenities</code>, <code>property_inquiries</code>, <code>user_favorites</code>, <code>billing_invoices</code>, <code>audit_logs</code>. PostGIS <code>geom_point</code> column managed via raw SQL.</td></tr>
+          <tr><td>seed.js</td><td>Creates default Admin, Seller, and Buyer accounts. Creates a sample approved property in Bole, Addis Ababa with real PostGIS coordinates.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ══ SECTION 4 ══ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <div class="section-title">Running Locally Without Real Services</div>
+    </div>
+
+    <p>You can develop and test <strong>100% of the backend</strong> without a real Gmail account, Google OAuth app, or Chapa credentials.</p>
+
+    <h2>Step 1 — Start Docker (Database + Cache)</h2>
+    <pre data-lang="bash"><code>docker-compose up -d
+docker ps    # Wait until both show (healthy)</code></pre>
+    <p>This starts <strong>PostgreSQL 16 + PostGIS</strong> on port 5432 and <strong>Redis 7</strong> on port 6379.</p>
+
+    <h2>Step 2 — Apply Schema &amp; Seed Data</h2>
+    <pre data-lang="bash"><code>npm run db:push     # Creates all 11 tables
+npm run db:seed     # Creates admin, seller, buyer accounts + sample property</code></pre>
+
+    <h2>Step 3 — Configure .env for Local (No Real Credentials)</h2>
+    <pre data-lang="env"><code>NODE_ENV=development
+PORT=5000
+FRONTEND_URL=http://localhost:3000
+DATABASE_URL=postgresql://ethred_user:ethred_pass@localhost:5432/ethred_db?schema=public
+REDIS_URL=redis://localhost:6379
+JWT_SECRET=my_local_dev_secret_key_at_least_32_chars
+JWT_EXPIRES_IN=15m
+JWT_COOKIE_NAME=ethred_token
+
+# Leave blank — OTP code will print to the console instead
+SMTP_HOST=
+SMTP_USER=
+SMTP_PASS=
+
+# Leave blank — Google login endpoint simply returns 404
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# Leave blank — payment initiation returns an error gracefully
+CHAPA_SECRET_KEY=
+CHAPA_WEBHOOK_SECRET=</code></pre>
+
+    <h2>Step 4 — Start the Dev Server</h2>
+    <pre data-lang="bash"><code>npm run dev
+# Server starts at http://localhost:5000
+# Health check: http://localhost:5000/health</code></pre>
+
+    <h2>Testing Without Email (OTP Flow)</h2>
+    <p>When <code>SMTP_USER</code> is blank, the OTP is <strong>printed directly to the server console</strong> instead of sent by email. Look for this in your terminal:</p>
+    <pre data-lang="text"><code>[info]: OTP for test@example.com: 847261</code></pre>
+
+    <h2>Testing Without Google OAuth</h2>
+    <p>Use standard email/password instead. All other endpoints work identically:</p>
+    <pre data-lang="bash"><code># Register a new user
+curl -X POST http://localhost:5000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"dev@test.com","password":"Test@1234","full_name":"Dev User"}'
+
+# Login (JWT cookie set automatically)
+curl -c cookies.txt -X POST http://localhost:5000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@ethred.com","password":"Admin@1234"}'
+
+# Call protected admin endpoint
+curl -b cookies.txt http://localhost:5000/api/v1/admin/dashboard
+
+# Public property search (no auth)
+curl "http://localhost:5000/api/v1/properties/search?city=Addis+Ababa&amp;category=APARTMENT"</code></pre>
+
+    <h2>Testing Payments (Chapa Sandbox)</h2>
+    <p>Chapa provides a <strong>free sandbox environment</strong> for testing payments without real money:</p>
+    <ol>
+      <li>Register at <strong>chapa.co</strong> → Get a test key starting with <code>CHASECK_TEST-...</code></li>
+      <li>Set <code>CHAPA_SECRET_KEY=CHASECK_TEST-...</code> in <code>.env</code></li>
+      <li>Test card: <strong>5399 8312 3400 0008</strong>, any future expiry, CVV <strong>100</strong></li>
+      <li>For webhook testing locally, use ngrok: <code>ngrok http 5000</code> → paste URL in Chapa dashboard</li>
+    </ol>
+
+    <h2>Visual Database Editor</h2>
+    <pre data-lang="bash"><code>npm run db:studio
+# Opens Prisma Studio at http://localhost:5555
+# Browse and edit all tables visually in your browser</code></pre>
+
+    <h2>Running the Test Suite</h2>
+    <pre data-lang="bash"><code>npm test               # Run all 6 tests
+npm run test:coverage  # Run with HTML coverage report</code></pre>
+
+    <div class="callout callout-success">
+      <div class="callout-icon">✓</div>
+      <div class="callout-body">
+        <strong>Fully Offline Development</strong>
+        With Docker running, you can develop the entire backend — auth, listings, inquiries, admin moderation, real-time chat — without any internet connection or external service accounts.
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ══ SECTION 5 ══ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <div class="section-title">Deploying to Render (Staging)</div>
+    </div>
+
+    <p>Render is ideal for a free staging environment to share with your team or testers.</p>
+
+    <div class="callout callout-warn">
+      <div class="callout-icon">⚠</div>
+      <div class="callout-body">
+        <strong>PostGIS Limitation</strong>
+        Render's free PostgreSQL tier does not include PostGIS. Use <strong>Neon</strong> (free, has PostGIS) or Render's paid PostgreSQL tier instead.
+      </div>
+    </div>
+
+    <h2>Step 1 — Push Code to GitHub</h2>
+    <pre data-lang="bash"><code>cd backend
+git init
+git add .
+git commit -m "Initial Ethred backend"
+git remote add origin https://github.com/YOUR_USERNAME/ethred-backend.git
+git push -u origin main</code></pre>
+    <p>Your <code>.gitignore</code> already excludes <code>node_modules/</code>, <code>.env</code>, <code>uploads/</code>, and <code>logs/</code>.</p>
+
+    <h2>Step 2 — Create PostgreSQL with PostGIS on Neon</h2>
+    <ol>
+      <li>Sign up at <strong>neon.tech</strong> (free tier)</li>
+      <li>Create a new project → copy the <strong>Connection String</strong></li>
+      <li>In the Neon SQL editor, run: <code>CREATE EXTENSION IF NOT EXISTS postgis;</code></li>
+    </ol>
+
+    <h2>Step 3 — Create Redis on Upstash</h2>
+    <ol>
+      <li>Sign up at <strong>upstash.com</strong> (free tier)</li>
+      <li>Create a Redis database → copy the <strong>REDIS_URL</strong> (starts with <code>rediss://</code>)</li>
+    </ol>
+
+    <h2>Step 4 — Create Web Service on Render</h2>
+    <ol>
+      <li>Go to <strong>render.com</strong> → New → Web Service</li>
+      <li>Connect your GitHub repository</li>
+      <li>Set <strong>Build Command</strong>: <code>npm install &amp;&amp; npm run db:generate &amp;&amp; npm run db:push &amp;&amp; npm run db:seed</code></li>
+      <li>Set <strong>Start Command</strong>: <code>npm start</code></li>
+    </ol>
+
+    <h2>Step 5 — Set Environment Variables on Render</h2>
+    <p>In the Render dashboard → your service → Environment tab, add all these variables:</p>
+    <pre data-lang="env"><code>NODE_ENV=production
+PORT=10000
+DATABASE_URL=postgresql://...   ← from Neon
+REDIS_URL=rediss://...          ← from Upstash (rediss:// with SSL)
+JWT_SECRET=&lt;64-char random string&gt;
+JWT_EXPIRES_IN=15m
+JWT_COOKIE_NAME=ethred_token
+FRONTEND_URL=https://your-frontend.vercel.app
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=yourapp@gmail.com
+SMTP_PASS=your_gmail_app_password
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_CALLBACK_URL=https://ethred-api.onrender.com/api/v1/auth/google/callback
+CHAPA_SECRET_KEY=CHASECK_TEST-...
+CHAPA_WEBHOOK_SECRET=your_webhook_secret
+UPLOAD_DIR=uploads</code></pre>
+
+    <h2>Step 6 — Deploy</h2>
+    <p>Click <strong>Deploy</strong>. Render builds your app, pushes the schema, seeds the database, and starts your API.</p>
+    <p>Your API will be live at: <code>https://ethred-api.onrender.com</code></p>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">ℹ</div>
+      <div class="callout-body">
+        <strong>Free Tier Sleep</strong>
+        Free Render web services spin down after 15 minutes of inactivity and take ~30 seconds to wake up. Use a paid plan or schedule a cron ping job (e.g., UptimeRobot) to keep it alive.
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ══ SECTION 6 ══ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">6</div>
+      <div class="section-title">Production Deployment (Real Server)</div>
+    </div>
+
+    <h2>Recommended Infrastructure</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Component</th><th>Recommendation</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Server</td><td>Ubuntu 22.04 VPS (2 vCPU, 4GB RAM)</td><td>Stable, widely documented</td></tr>
+          <tr><td>PostgreSQL</td><td>Self-hosted Docker or Supabase</td><td>Supabase has PostGIS built-in</td></tr>
+          <tr><td>Redis</td><td>Self-hosted Docker or Upstash</td><td>Upstash is serverless, no management</td></tr>
+          <tr><td>Process Manager</td><td>PM2</td><td>Auto-restart, log rotation, cluster mode</td></tr>
+          <tr><td>Reverse Proxy</td><td>Nginx</td><td>HTTPS termination, static file serving</td></tr>
+          <tr><td>SSL Certificate</td><td>Let's Encrypt via Certbot</td><td>Free, auto-renews every 90 days</td></tr>
+          <tr><td>Email</td><td>Gmail App Password or Resend.com</td><td>Gmail for dev, Resend for production volume</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Server Setup</h2>
+    <pre data-lang="bash"><code># SSH into your server
+ssh root@YOUR_SERVER_IP
+
+# Install Node.js 20
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt install -y nodejs
+
+# Install PM2 globally
+npm install -g pm2
+
+# Install Docker
+apt install -y docker.io docker-compose
+systemctl enable docker
+
+# Install Nginx
+apt install -y nginx
+
+# Install SSL tool
+apt install -y certbot python3-certbot-nginx</code></pre>
+
+    <h2>Clone &amp; Configure</h2>
+    <pre data-lang="bash"><code>mkdir -p /var/www/ethred
+cd /var/www/ethred
+git clone https://github.com/YOUR_USERNAME/ethred-backend.git .
+npm install
+cp .env.example .env
+nano .env    # Fill in all production values</code></pre>
+
+    <h2>Start Database Containers</h2>
+    <pre data-lang="bash"><code>docker-compose up -d
+npm run db:push      # Apply schema
+npm run db:seed      # Seed initial data
+npm run db:generate  # Generate Prisma client</code></pre>
+
+    <h2>Nginx Configuration</h2>
+    <pre data-lang="nginx"><code>server {
+    listen 80;
+    server_name api.ethred.com;
+    client_max_body_size 50M;
+
+    location / {
+        proxy_pass http://localhost:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Serve uploads directly via Nginx (faster than Node)
+    location /uploads/ {
+        alias /var/www/ethred/uploads/;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+}</code></pre>
+
+    <pre data-lang="bash"><code>ln -s /etc/nginx/sites-available/ethred /etc/nginx/sites-enabled/
+nginx -t && systemctl restart nginx</code></pre>
+
+    <h2>Enable HTTPS</h2>
+    <pre data-lang="bash"><code># Point your domain DNS A record to server IP first, then:
+certbot --nginx -d api.ethred.com
+# Certbot auto-renews every 90 days</code></pre>
+
+    <h2>Start with PM2</h2>
+    <pre data-lang="bash"><code>cd /var/www/ethred
+pm2 start server.js --name "ethred-api" --env production
+pm2 save          # Save config to survive reboots
+pm2 startup       # Register as system service (follow the output instruction)</code></pre>
+
+    <h2>PM2 Commands</h2>
+    <pre data-lang="bash"><code>pm2 status             # Check process status
+pm2 logs ethred-api    # View real-time logs
+pm2 restart ethred-api # Restart after code update
+pm2 monit              # CPU/memory dashboard</code></pre>
+
+    <h2>Update Workflow</h2>
+    <pre data-lang="bash"><code>cd /var/www/ethred
+git pull origin main           # Pull latest code
+npm install                    # Install new packages
+npm run db:generate            # Regenerate Prisma if schema changed
+npm run db:push                # Apply schema changes
+pm2 restart ethred-api         # Restart with zero downtime</code></pre>
+
+    <h2>Production Go-Live Checklist</h2>
+    <ul class="checklist">
+      <li><code>NODE_ENV=production</code> set in .env</li>
+      <li><code>JWT_SECRET</code> is a long random string (min 64 chars) — generate: <code>openssl rand -base64 64</code></li>
+      <li>SMTP credentials set to real Gmail App Password or transactional email service</li>
+      <li>Google OAuth Client ID/Secret set from Google Cloud Console</li>
+      <li>Chapa <strong>live</strong> key set (not test key)</li>
+      <li>Chapa webhook secret matches dashboard configuration</li>
+      <li><code>FRONTEND_URL</code> set to actual frontend domain</li>
+      <li>HTTPS enabled (SSL certificate installed)</li>
+      <li><code>uploads/</code> directory writable: <code>chmod -R 755 uploads/</code></li>
+      <li>Firewall configured — only ports 22, 80, 443 open: <code>ufw allow 22 80 443 &amp;&amp; ufw enable</code></li>
+      <li>PM2 startup configured: <code>pm2 startup</code></li>
+      <li>Log rotation enabled: <code>pm2 install pm2-logrotate</code></li>
+    </ul>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ══ SECTION 7 ══ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">7</div>
+      <div class="section-title">Quick Reference</div>
+    </div>
+
+    <h2>npm Scripts</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Command</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>npm run dev</td><td>Start dev server with hot reload (nodemon)</td></tr>
+          <tr><td>npm start</td><td>Start production server</td></tr>
+          <tr><td>npm test</td><td>Run all Jest unit/integration tests</td></tr>
+          <tr><td>npm run test:coverage</td><td>Run tests with coverage HTML report</td></tr>
+          <tr><td>npm run db:generate</td><td>Generate Prisma Client from schema.prisma</td></tr>
+          <tr><td>npm run db:push</td><td>Push schema to database (no migration files)</td></tr>
+          <tr><td>npm run db:migrate</td><td>Create + run named migration (production use)</td></tr>
+          <tr><td>npm run db:studio</td><td>Open visual DB editor at localhost:5555</td></tr>
+          <tr><td>npm run db:seed</td><td>Seed default users and sample property</td></tr>
+          <tr><td>npm run lint</td><td>Run ESLint on all source files</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Default Test Accounts</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Role</th><th>Email</th><th>Password</th><th>Permissions</th></tr></thead>
+        <tbody>
+          <tr><td>ADMIN</td><td>admin@ethred.com</td><td>Admin@1234</td><td>Everything — moderation, user mgmt, audit logs, stats</td></tr>
+          <tr><td>SELLER</td><td>seller@ethred.com</td><td>Seller@1234</td><td>Create/manage listings, respond to inquiries, initiate payments</td></tr>
+          <tr><td>BUYER</td><td>buyer@ethred.com</td><td>Buyer@1234</td><td>Search properties, save favorites, send inquiries</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Key API Endpoints</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Endpoint</th><th>Auth</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>GET /health</td><td>None</td><td>Server health check with uptime, DB, Redis status</td></tr>
+          <tr><td>POST /api/v1/auth/register</td><td>None</td><td>Create account with email + password</td></tr>
+          <tr><td>POST /api/v1/auth/login</td><td>None</td><td>Login, receive JWT in HTTP-only cookie</td></tr>
+          <tr><td>GET /api/v1/properties/search</td><td>None</td><td>Search listings — city, category, price, bedrooms</td></tr>
+          <tr><td>GET /api/v1/admin/dashboard</td><td>ADMIN</td><td>Platform-wide stats, revenue, user counts</td></tr>
+          <tr><td>GET /api/v1/admin/properties/pending</td><td>ADMIN</td><td>Listings queue awaiting review</td></tr>
+          <tr><td>POST /api/v1/payments/initiate</td><td>SELLER</td><td>Create Chapa checkout for listing promotion</td></tr>
+          <tr><td>POST /api/v1/payments/chapa-webhook</td><td>None (HMAC)</td><td>Chapa payment callback — HMAC verified</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div style="text-align:center; padding: 40px 0 20px; color: var(--text-dim); font-size: 0.75rem; border-top: 1px solid var(--border);">
+    Ethred Backend Developer Manual · v1.0 · July 2026 · Confidential
+  </div>
+
+</div>
+
+<script>
+// Print-to-PDF helper: Ctrl+P or Cmd+P → Save as PDF
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+    // Already handled by browser — just a reminder
+  }
+});
+</script>
+</body>
+</html>

@@ -110,9 +110,12 @@ const searchProperties = async (query) => {
   return { count, page: parseInt(page), limit: take, results: shaped };
 };
 
+const sanitizeId = (id) => String(id || '').replace(/['"]/g, '').trim();
+
 const getProperty = async (propertyId) => {
+  const cleanId = sanitizeId(propertyId);
   const property = await prisma.property.findUnique({
-    where: { id: propertyId },
+    where: { id: cleanId },
     include: {
       media: { orderBy: { sort_order: 'asc' } },
       amenities: true,
@@ -163,7 +166,8 @@ const createProperty = async (user, body) => {
 };
 
 const updateProperty = async (propertyId, user, body) => {
-  const property = await prisma.property.findUnique({ where: { id: propertyId } });
+  const cleanId = sanitizeId(propertyId);
+  const property = await prisma.property.findUnique({ where: { id: cleanId } });
   if (!property) throw new ApiError('Property not found.', 404);
   ensureOwnerOrAdmin(property, user);
 
@@ -171,7 +175,7 @@ const updateProperty = async (propertyId, user, body) => {
   const { amenities, latitude, longitude, ...data } = schema.parse(body);
 
   const updated = await prisma.property.update({
-    where: { id: propertyId },
+    where: { id: cleanId },
     data: { ...data, updated_at: new Date() },
   });
 
@@ -179,7 +183,7 @@ const updateProperty = async (propertyId, user, body) => {
     await prisma.$executeRaw`
       UPDATE properties 
       SET geom_point = ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography
-      WHERE id = ${propertyId}::uuid
+      WHERE id = ${cleanId}::uuid
     `;
   }
 
@@ -187,14 +191,15 @@ const updateProperty = async (propertyId, user, body) => {
 };
 
 const deleteProperty = async (propertyId, user) => {
-  const property = await prisma.property.findUnique({ where: { id: propertyId } });
+  const cleanId = sanitizeId(propertyId);
+  const property = await prisma.property.findUnique({ where: { id: cleanId } });
   if (!property) throw new ApiError('Property not found.', 404);
   ensureOwnerOrAdmin(property, user);
 
-  await prisma.property.update({ where: { id: propertyId }, data: { status: 'ARCHIVED' } });
+  await prisma.property.update({ where: { id: cleanId }, data: { status: 'ARCHIVED' } });
 
   await prisma.auditLog.create({
-    data: { actor_id: user.id, action: 'PROPERTY_ARCHIVED', target_table: 'properties', target_id: propertyId },
+    data: { actor_id: user.id, action: 'PROPERTY_ARCHIVED', target_table: 'properties', target_id: cleanId },
   });
 };
 
@@ -202,7 +207,8 @@ const deleteProperty = async (propertyId, user) => {
  * Submit DRAFT listing for admin review — SRS Section 8.1
  */
 const submitForReview = async (propertyId, user) => {
-  const property = await prisma.property.findUnique({ where: { id: propertyId } });
+  const cleanId = String(propertyId || '').replace(/['"]/g, '').trim();
+  const property = await prisma.property.findUnique({ where: { id: cleanId } });
   if (!property) throw new ApiError('Property not found.', 404);
   ensureOwnerOrAdmin(property, user);
 
@@ -211,20 +217,21 @@ const submitForReview = async (propertyId, user) => {
   }
 
   return prisma.property.update({
-    where: { id: propertyId },
+    where: { id: cleanId },
     data: { status: 'PENDING', updated_at: new Date() },
   });
 };
 
 const attachMedia = async (propertyId, user, files, mediaType) => {
-  const property = await prisma.property.findUnique({ where: { id: propertyId } });
+  const cleanId = sanitizeId(propertyId);
+  const property = await prisma.property.findUnique({ where: { id: cleanId } });
   if (!property) throw new ApiError('Property not found.', 404);
   ensureOwnerOrAdmin(property, user);
 
-  const currentCount = await prisma.propertyMedia.count({ where: { property_id: propertyId } });
+  const currentCount = await prisma.propertyMedia.count({ where: { property_id: cleanId } });
 
   const mediaRecords = files.map((f, i) => ({
-    property_id: propertyId,
+    property_id: cleanId,
     file_url: f.file_url,
     media_category: mediaType,
     sort_order: currentCount + i,
@@ -234,7 +241,8 @@ const attachMedia = async (propertyId, user, files, mediaType) => {
 };
 
 const deleteMedia = async (propertyId, mediaId, user) => {
-  const property = await prisma.property.findUnique({ where: { id: propertyId } });
+  const cleanId = sanitizeId(propertyId);
+  const property = await prisma.property.findUnique({ where: { id: cleanId } });
   if (!property) throw new ApiError('Property not found.', 404);
   ensureOwnerOrAdmin(property, user);
 
@@ -256,16 +264,17 @@ const getMyListings = async (user, query) => {
 };
 
 const getListingStats = async (propertyId, user) => {
-  const property = await prisma.property.findUnique({ where: { id: propertyId } });
+  const cleanId = sanitizeId(propertyId);
+  const property = await prisma.property.findUnique({ where: { id: cleanId } });
   if (!property) throw new ApiError('Property not found.', 404);
   ensureOwnerOrAdmin(property, user);
 
   const [favorites, inquiries] = await Promise.all([
-    prisma.userFavorite.count({ where: { property_id: propertyId } }),
-    prisma.propertyInquiry.count({ where: { property_id: propertyId } }),
+    prisma.userFavorite.count({ where: { property_id: cleanId } }),
+    prisma.propertyInquiry.count({ where: { property_id: cleanId } }),
   ]);
 
-  return { property_id: propertyId, favorites_count: favorites, inquiries_count: inquiries };
+  return { property_id: cleanId, favorites_count: favorites, inquiries_count: inquiries };
 };
 
 module.exports = {

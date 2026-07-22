@@ -21,6 +21,14 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
+  // Prisma invalid UUID format error
+  if (err.code === 'P2023' || (err.message && err.message.includes('invalid character'))) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid ID format. Must be a valid UUID.',
+    });
+  }
+
   // JWT errors
   if (err.name === 'JsonWebTokenError') {
     return res.status(401).json({ success: false, message: 'Invalid token.' });
