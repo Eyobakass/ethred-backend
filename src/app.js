@@ -56,6 +56,7 @@ app.use(morgan('combined', {
 
 // ── Static Files (local upload storage) ─────────────────────────────────────
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+app.use(express.static(path.join(process.cwd(), 'public'))); // serve index.html at root
 
 // ── Passport ─────────────────────────────────────────────────────────────────
 app.use(passport.initialize());
