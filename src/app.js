@@ -64,17 +64,11 @@ app.use(passport.initialize());
 // ── Rate Limiting ─────────────────────────────────────────────────────────────
 app.use(API_PREFIX, apiLimiter);
 
+const { handleHealthCheck } = require('./modules/health/controller');
+
 // ── Health Check ──────────────────────────────────────────────────────────────
-const healthHandler = (req, res) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV,
-    version: require('../package.json').version,
-  });
-};
-app.get('/health', healthHandler);
-app.get(`${API_PREFIX}/health`, healthHandler);
+app.get('/health', handleHealthCheck);
+app.get(`${API_PREFIX}/health`, handleHealthCheck);
 
 // ── API Routes ────────────────────────────────────────────────────────────────
 app.use(`${API_PREFIX}/auth`, authRoutes);
