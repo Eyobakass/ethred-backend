@@ -65,14 +65,16 @@ app.use(passport.initialize());
 app.use(API_PREFIX, apiLimiter);
 
 // ── Health Check ──────────────────────────────────────────────────────────────
-app.get('/health', (req, res) => {
+const healthHandler = (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
     version: require('../package.json').version,
   });
-});
+};
+app.get('/health', healthHandler);
+app.get(`${API_PREFIX}/health`, healthHandler);
 
 // ── API Routes ────────────────────────────────────────────────────────────────
 app.use(`${API_PREFIX}/auth`, authRoutes);

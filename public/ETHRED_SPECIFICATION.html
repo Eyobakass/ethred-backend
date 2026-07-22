@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Ethred Backend — Architecture, Schema &amp; Privilege Specification</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --gold: #D4AF37;
+    --gold-light: #F0D060;
+    --dark: #0d0d0d;
+    --dark2: #141414;
+    --dark3: #1c1c1c;
+    --dark4: #242424;
+    --border: #2b2b2b;
+    --text: #ececec;
+    --text-muted: #a0a0a0;
+    --text-dim: #666;
+    --green: #22c55e;
+    --blue: #3b82f6;
+    --purple: #a855f7;
+    --orange: #f97316;
+    --red: #ef4444;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 14px; scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--dark);
+    color: var(--text);
+    line-height: 1.75;
+  }
+
+  /* ── Header Cover ── */
+  .cover {
+    min-height: 80vh;
+    background: radial-gradient(circle at 80% 20%, rgba(212,175,55,0.08) 0%, transparent 60%),
+                linear-gradient(135deg, #070707 0%, #121212 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 80px 100px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .cover-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(212,175,55,0.12);
+    border: 1px solid rgba(212,175,55,0.3);
+    color: var(--gold);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 4px;
+    width: fit-content;
+    margin-bottom: 24px;
+  }
+
+  .cover h1 {
+    font-size: 3.5rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: #fff;
+    margin-bottom: 16px;
+    letter-spacing: -0.02em;
+  }
+
+  .cover h1 span { color: var(--gold); }
+
+  .cover-subtitle {
+    font-size: 1.15rem;
+    color: var(--text-muted);
+    font-weight: 300;
+    max-width: 750px;
+    margin-bottom: 40px;
+  }
+
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    max-width: 900px;
+  }
+
+  .meta-card {
+    background: var(--dark2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 18px;
+  }
+
+  .meta-card .label { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; }
+  .meta-card .val { font-size: 1rem; font-weight: 700; color: #fff; margin-top: 2px; }
+  .val-gold { color: var(--gold) !important; }
+
+  /* ── Container ── */
+  .container {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 60px 40px;
+  }
+
+  /* ── Sections ── */
+  .section { margin-bottom: 70px; }
+
+  h2 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #fff;
+    margin: 40px 0 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    letter-spacing: -0.01em;
+  }
+
+  h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--gold);
+    margin: 32px 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  h3::before {
+    content: '';
+    width: 4px;
+    height: 16px;
+    background: var(--gold);
+    border-radius: 2px;
+    display: inline-block;
+  }
+
+  p { margin-bottom: 14px; color: var(--text-muted); font-size: 0.92rem; }
+  strong { color: #fff; font-weight: 600; }
+
+  /* ── Badges ── */
+  .role-badge {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+  .role-public { background: rgba(158,158,158,0.15); color: #ccc; border: 1px solid rgba(158,158,158,0.3); }
+  .role-buyer { background: rgba(59,130,246,0.15); color: var(--blue); border: 1px solid rgba(59,130,246,0.3); }
+  .role-seller { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+  .role-agency { background: rgba(168,85,247,0.15); color: var(--purple); border: 1px solid rgba(168,85,247,0.3); }
+  .role-admin { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+
+  .method {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    min-width: 55px;
+    text-align: center;
+    display: inline-block;
+  }
+  .method-get { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+  .method-post { background: rgba(59,130,246,0.15); color: var(--blue); border: 1px solid rgba(59,130,246,0.3); }
+  .method-put { background: rgba(249,115,22,0.15); color: var(--orange); border: 1px solid rgba(249,115,22,0.3); }
+  .method-patch { background: rgba(168,85,247,0.15); color: var(--purple); border: 1px solid rgba(168,85,247,0.3); }
+  .method-delete { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+
+  /* ── Tables ── */
+  .table-wrap {
+    overflow-x: auto;
+    margin: 18px 0 28px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+
+  thead tr { background: var(--dark3); }
+  thead th {
+    text-align: left;
+    padding: 12px 16px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gold);
+    border-bottom: 1px solid var(--border);
+  }
+
+  tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:nth-child(even) { background: rgba(255,255,255,0.015); }
+  tbody tr:hover { background: rgba(212,175,55,0.03); }
+
+  td { padding: 12px 16px; color: var(--text-muted); vertical-align: top; }
+  td.code-cell { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #fff; font-weight: 600; white-space: nowrap; }
+
+  /* ── Lists ── */
+  ul, ol { padding-left: 20px; margin-bottom: 16px; }
+  li { margin-bottom: 6px; color: var(--text-muted); font-size: 0.9rem; }
+  li::marker { color: var(--gold); }
+
+  /* ── Code & Diagrams ── */
+  pre, .diagram-box {
+    background: #060606;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    overflow-x: auto;
+    margin: 18px 0 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--gold);
+    line-height: 1.6;
+    white-space: pre;
+  }
+
+  p code, li code, td code {
+    background: rgba(212,175,55,0.1);
+    border: 1px solid rgba(212,175,55,0.2);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 0.78rem;
+    color: var(--gold-light);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── Print ── */
+  @media print {
+    body { background: #fff; color: #000; }
+    .cover { background: #fff; min-height: auto; padding: 40px; border-bottom: 2px solid #D4AF37; }
+    .cover h1 { color: #000; font-size: 2.8rem; }
+    .cover h1 span { color: #B8970C; }
+    .cover-subtitle { color: #555; }
+    .meta-card { background: #f8f8f8; border-color: #ddd; }
+    .meta-card .label { color: #888; }
+    .meta-card .val { color: #000; }
+    .container { padding: 40px; }
+    h2 { color: #000; border-bottom-color: #ddd; }
+    h3 { color: #B8970C; }
+    p, li, td { color: #444; }
+    td.code-cell { color: #000; }
+    table { font-size: 0.75rem; }
+    thead tr { background: #f0f0f0; }
+    thead th { color: #B8970C; }
+    pre, .diagram-box { background: #f4f4f4; border-color: #ddd; color: #111; }
+    p code, li code, td code { background: #f9f2d6; border-color: #d4af37; color: #7a6000; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════ COVER ══ -->
+<div class="cover">
+  <div class="cover-badge">Specification Reference</div>
+  <h1>Ethred Backend<br/><span>Architecture &amp; Schema Spec</span></h1>
+  <div class="cover-subtitle">Definitive technical reference for data schemas, role privileges, service logic workflows, and API request mapping.</div>
+  
+  <div class="meta-grid">
+    <div class="meta-card">
+      <div class="label">Version</div>
+      <div class="val val-gold">1.0.0</div>
+    </div>
+    <div class="meta-card">
+      <div class="label">Target System</div>
+      <div class="val">Ethred API</div>
+    </div>
+    <div class="meta-card">
+      <div class="label">Database Tables</div>
+      <div class="val">11 Schemas</div>
+    </div>
+    <div class="meta-card">
+      <div class="label">API Routes</div>
+      <div class="val">42 Routes</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════ CONTENT ══ -->
+<div class="container">
+
+  <!-- ── 1. System Overview & Core Capabilities ── -->
+  <div class="section">
+    <h2>1. System Overview &amp; Core Capabilities</h2>
+
+    <p>The <strong>Ethred Backend</strong> is a multi-tenant, role-based real estate platform designed specifically for the Ethiopian market. It handles property discovery, user identity, agency delegation, buyer-seller communication, Ethiopian Birr (ETB) payments via Chapa, real-time messaging, and admin content moderation.</p>
+
+    <h3>Key Architectural Characteristics</h3>
+    <ul>
+      <li><strong>Authentication</strong>: Stateless JWT stored in HTTP-Only cookies with sliding refresh tokens, email OTP verification, and Google OAuth 2.0.</li>
+      <li><strong>Authorization</strong>: Granular Role-Based Access Control (RBAC) supporting 5 distinct user roles.</li>
+      <li><strong>Spatial Search</strong>: PostgreSQL + PostGIS integration for coordinate-based geographic proximity queries (latitude/longitude).</li>
+      <li><strong>Media Optimization</strong>: Automated multi-resolution WebP image transcoding (400px, 800px, 1200px) via Sharp.</li>
+      <li><strong>Payment Verification</strong>: Cryptographic HMAC-SHA256 signature verification for Chapa webhooks with automated state transitions.</li>
+      <li><strong>Auditing</strong>: Comprehensive audit logging capturing actor, action, target entity, and diffs for every state-changing operation.</li>
+    </ul>
+  </div>
+
+  <!-- ── 2. User Roles & Privilege Matrix ── -->
+  <div class="section">
+    <h2>2. User Roles &amp; Privilege Matrix</h2>
+
+    <p>The system enforces 5 authenticated roles plus an unauthenticated Public role:</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Role Code</th>
+            <th>Display Name</th>
+            <th>Target Persona</th>
+            <th>Access Summary</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>PUBLIC</code></td>
+            <td>Guest Visitor</td>
+            <td>Anyone</td>
+            <td>Search properties, view active listings, initiate registration/login.</td>
+          </tr>
+          <tr>
+            <td><code>BUYER</code></td>
+            <td>Property Buyer / Tenant</td>
+            <td>Home seekers</td>
+            <td>Search, save favorites, send inquiries, report listings, manage own profile.</td>
+          </tr>
+          <tr>
+            <td><code>SELLER</code></td>
+            <td>Independent Seller / Landlord</td>
+            <td>Property owners</td>
+            <td>All Buyer privileges + create listings, upload media, initiate promotion payments, manage own inbox.</td>
+          </tr>
+          <tr>
+            <td><code>AGENCY_ADMIN</code></td>
+            <td>Agency Owner / Manager</td>
+            <td>Real estate firms</td>
+            <td>All Seller privileges + create agency profile, invite agents, assign listings, view agency analytics.</td>
+          </tr>
+          <tr>
+            <td><code>AGENCY_AGENT</code></td>
+            <td>Agency Agent / Broker</td>
+            <td>Employed brokers</td>
+            <td>All Seller privileges on behalf of their assigned agency.</td>
+          </tr>
+          <tr>
+            <td><code>ADMIN</code></td>
+            <td>Platform Administrator</td>
+            <td>Ethred staff</td>
+            <td>Full system control: listing moderation queue, user management/banning, agency verification, audit log inspection, platform analytics.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── 3. Database Schemas & Field Specification ── -->
+  <div class="section">
+    <h2>3. Database Schemas &amp; Field Specification</h2>
+
+    <p>Below is the detailed breakdown of every database entity in <code>prisma/schema.prisma</code>.</p>
+
+    <h3>3.1. User (`users`)</h3>
+    <p>Stores core identity and authentication state.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field Name</th><th>Type</th><th>Constraints</th><th>Description &amp; Privilege</th></tr></thead>
+        <tbody>
+          <tr><td class="code-cell">id</td><td>UUID</td><td>Primary Key, Auto-gen</td><td>Unique user identifier.</td></tr>
+          <tr><td class="code-cell">email</td><td>String</td><td>Unique, VarChar(255)</td><td>User's email address (login credential).</td></tr>
+          <tr><td class="code-cell">phone_number</td><td>String</td><td>Unique, VarChar(20)</td><td>Mobile phone number (e.g., <code>+251911223344</code>).</td></tr>
+          <tr><td class="code-cell">password_hash</td><td>String</td><td>VarChar(255)</td><td>Bcrypt hash (12 rounds). <strong>Never returned in API responses</strong>.</td></tr>
+          <tr><td class="code-cell">role</td><td>Enum</td><td>Default: BUYER</td><td>One of <code>BUYER</code>, <code>SELLER</code>, <code>AGENCY_ADMIN</code>, <code>AGENCY_AGENT</code>, <code>ADMIN</code>. Editable only by <code>ADMIN</code>.</td></tr>
+          <tr><td class="code-cell">is_phone_verified</td><td>Boolean</td><td>Default: false</td><td>True when OTP verification succeeds.</td></tr>
+          <tr><td class="code-cell">is_identity_verified</td><td>Boolean</td><td>Default: false</td><td>True when <code>ADMIN</code> verifies uploaded ID documents.</td></tr>
+          <tr><td class="code-cell">created_at</td><td>DateTime</td><td>Timestamptz</td><td>Account creation timestamp.</td></tr>
+          <tr><td class="code-cell">updated_at</td><td>DateTime</td><td>Timestamptz</td><td>Auto-updated on record changes.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul>
+      <li><strong>Read Privilege</strong>: User (own record), <code>ADMIN</code> (all records).</li>
+      <li><strong>Write Privilege</strong>: User (email/phone updates), <code>ADMIN</code> (role changes, identity verification flag).</li>
+    </ul>
+
+    <h3>3.2. Profile (`profiles`)</h3>
+    <p>Extends <code>User</code> with personal profile details.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field Name</th><th>Type</th><th>Constraints</th><th>Description &amp; Privilege</th></tr></thead>
+        <tbody>
+          <tr><td class="code-cell">id</td><td>UUID</td><td>Primary Key</td><td>Unique profile ID.</td></tr>
+          <tr><td class="code-cell">user_id</td><td>UUID</td><td>Foreign Key → User.id</td><td>1-to-1 link to <code>User</code>. Cascades on delete.</td></tr>
+          <tr><td class="code-cell">full_name</td><td>String</td><td>VarChar(150)</td><td>User's full legal or display name.</td></tr>
+          <tr><td class="code-cell">avatar_url</td><td>String?</td><td>VarChar(500)</td><td>Relative URL to uploaded WebP avatar image.</td></tr>
+          <tr><td class="code-cell">preferred_language</td><td>String</td><td>Default: "en"</td><td>Language code (<code>"en"</code> for English, <code>"am"</code> for Amharic).</td></tr>
+          <tr><td class="code-cell">created_at</td><td>DateTime</td><td>Timestamptz</td><td>Profile creation timestamp.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul>
+      <li><strong>Read Privilege</strong>: Public (name/avatar of property owners &amp; agents), User (own full profile).</li>
+      <li><strong>Write Privilege</strong>: User (own profile), <code>ADMIN</code>.</li>
+    </ul>
+
+    <h3>3.3. Agency (`agencies`)</h3>
+    <p>Represents real estate agencies operating on the platform.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field Name</th><th>Type</th><th>Constraints</th><th>Description &amp; Privilege</th></tr></thead>
+        <tbody>
+          <tr><td class="code-cell">id</td><td>UUID</td><td>Primary Key</td><td>Unique agency ID.</td></tr>
+          <tr><td class="code-cell">admin_id</td><td>UUID</td><td>Foreign Key → User.id</td><td>The <code>AGENCY_ADMIN</code> user who created and manages the agency.</td></tr>
+          <tr><td class="code-cell">agency_name</td><td>String</td><td>Unique, VarChar(200)</td><td>Commercial name of the brokerage firm.</td></tr>
+          <tr><td class="code-cell">logo_url</td><td>String?</td><td>VarChar(500)</td><td>Relative URL to agency brand logo.</td></tr>
+          <tr><td class="code-cell">business_license_url</td><td>String</td><td>VarChar(500)</td><td>Path to uploaded government business license (PDF/Image).</td></tr>
+          <tr><td class="code-cell">is_approved</td><td>Boolean</td><td>Default: false</td><td>Approval status. Only approved agencies can assign agents and post verified listings.</td></tr>
+          <tr><td class="code-cell">created_at</td><td>DateTime</td><td>Timestamptz</td><td>Registration timestamp.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul>
+      <li><strong>Read Privilege</strong>: Public (approved agencies), <code>AGENCY_ADMIN</code> (own agency), <code>ADMIN</code> (all agencies).</li>
+      <li><strong>Write Privilege</strong>: <code>AGENCY_ADMIN</code> (initial submission &amp; profile edits), <code>ADMIN</code> (approval/rejection flag).</li>
+    </ul>
+
+    <h3>3.4. AgencyEmployee (`agency_employees`)</h3>
+    <p>Join table linking agents (<code>AGENCY_AGENT</code>) to an <code>Agency</code>.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field Name</th><th>Type</th><th>Constraints</th><th>Description &amp; Privilege</th></tr></thead>
+        <tbody>
+          <tr><td class="code-cell">id</td><td>UUID</td><td>Primary Key</td><td>Unique record ID.</td></tr>
+          <tr><td class="code-cell">agency_id</td><td>UUID</td><td>Foreign Key → Agency.id</td><td>Link to agency. Cascades on delete.</td></tr>
+          <tr><td class="code-cell">user_id</td><td>UUID</td><td>Foreign Key → User.id</td><td>Link to user. Unique (agent belongs to 1 agency at a time).</td></tr>
+          <tr><td class="code-cell">assigned_role</td><td>String</td><td>Default: "AGENT"</td><td>Internal job role (<code>"AGENT"</code>, <code>"MANAGER"</code>).</td></tr>
+          <tr><td class="code-cell">created_at</td><td>DateTime</td><td>Timestamptz</td><td>Join timestamp.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul>
+      <li><strong>Read Privilege</strong>: <code>AGENCY_ADMIN</code> (own team), <code>AGENCY_AGENT</code> (own membership), <code>ADMIN</code>.</li>
+      <li><strong>Write Privilege</strong>: <code>AGENCY_ADMIN</code> (invite &amp; remove agents), <code>ADMIN</code>.</li>
+    </ul>
+
+    <h3>3.5. Property (`properties`)</h3>
+    <p>Central listing record containing all property features and spatial geography.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field Name</th><th>Type</th><th>Constraints</th><th>Description &amp; Privilege</th></tr></thead>
+        <tbody>
+          <tr><td class="code-cell">id</td><td>UUID</td><td>Primary Key</td><td>Unique property ID.</td></tr>
+          <tr><td class="code-cell">owner_id</td><td>UUID</td><td>Foreign Key → User.id</td><td>User who created/owns the listing (<code>SELLER</code>/<code>AGENCY_ADMIN</code>/<code>AGENCY_AGENT</code>).</td></tr>
+          <tr><td class="code-cell">agency_id</td><td>UUID?</td><td>Foreign Key → Agency.id</td><td>Associated agency if posted on behalf of an agency.</td></tr>
+          <tr><td class="code-cell">title_en</td><td>String</td><td>VarChar(255)</td><td>English title.</td></tr>
+          <tr><td class="code-cell">title_am</td><td>String?</td><td>VarChar(255)</td><td>Amharic title.</td></tr>
+          <tr><td class="code-cell">description_en</td><td>String</td><td>Text</td><td>Comprehensive English description.</td></tr>
+          <tr><td class="code-cell">description_am</td><td>String?</td><td>Text</td><td>Comprehensive Amharic description.</td></tr>
+          <tr><td class="code-cell">price_etb</td><td>Decimal</td><td>Decimal(15,2)</td><td>Asking price in Ethiopian Birr. Indexed for range queries.</td></tr>
+          <tr><td class="code-cell">price_usd</td><td>Decimal?</td><td>Decimal(15,2)</td><td>Optional USD price for diaspora/international listings.</td></tr>
+          <tr><td class="code-cell">transaction_mode</td><td>Enum</td><td>Default: SALE</td><td><code>SALE</code> or <code>RENT</code>.</td></tr>
+          <tr><td class="code-cell">category</td><td>Enum</td><td>Default: HOUSE</td><td><code>HOUSE</code>, <code>APARTMENT</code>, <code>LAND</code>, <code>COMMERCIAL</code>, <code>OFFICE</code>, <code>WAREHOUSE</code>, <code>VACATION</code>.</td></tr>
+          <tr><td class="code-cell">region</td><td>String</td><td>VarChar(100)</td><td>Administrative region (e.g., <code>"Addis Ababa"</code>).</td></tr>
+          <tr><td class="code-cell">city</td><td>String</td><td>VarChar(100)</td><td>City name. Indexed.</td></tr>
+          <tr><td class="code-cell">sub_city</td><td>String</td><td>VarChar(100)</td><td>Sub-city name (e.g., <code>"Bole"</code>, <code>"Kirkos"</code>). Indexed.</td></tr>
+          <tr><td class="code-cell">woreda</td><td>String</td><td>VarChar(100)</td><td>Woreda district identifier.</td></tr>
+          <tr><td class="code-cell">kebele</td><td>String?</td><td>VarChar(100)</td><td>Kebele local area.</td></tr>
+          <tr><td class="code-cell">nearest_landmark</td><td>String?</td><td>VarChar(255)</td><td>Reference landmark (e.g., <code>"Near Edna Mall"</code>).</td></tr>
+          <tr><td class="code-cell">bedrooms</td><td>Int</td><td>Default: 0</td><td>Number of bedrooms.</td></tr>
+          <tr><td class="code-cell">bathrooms</td><td>Int</td><td>Default: 0</td><td>Number of bathrooms.</td></tr>
+          <tr><td class="code-cell">area_sqm</td><td>Decimal</td><td>Decimal(10,2)</td><td>Total area in square meters.</td></tr>
+          <tr><td class="code-cell">status</td><td>Enum</td><td>Default: DRAFT</td><td>Status state: <code>DRAFT</code>, <code>PENDING</code>, <code>APPROVED</code>, <code>SUSPENDED</code>, <code>ARCHIVED</code>.</td></tr>
+          <tr><td class="code-cell">is_featured</td><td>Boolean</td><td>Default: false</td><td>True when boosted via Chapa payment. Indexed.</td></tr>
+          <tr><td class="code-cell">featured_tier</td><td>String?</td><td>VarChar(50)</td><td>Tier code: <code>"HOMEPAGE_FEATURED"</code>, <code>"SEARCH_BOOST"</code>, <code>"PREMIUM_BADGE"</code>.</td></tr>
+          <tr><td class="code-cell">featured_until</td><td>DateTime?</td><td>Timestamptz</td><td>Expiry timestamp for promotion.</td></tr>
+          <tr><td class="code-cell">geom_point</td><td>Geography</td><td>Raw PostGIS Point</td><td>PostGIS spatial point <code>ST_MakePoint(longitude, latitude)</code>. Managed via SQL.</td></tr>
+          <tr><td class="code-cell">created_at</td><td>DateTime</td><td>Timestamptz</td><td>Listing creation timestamp.</td></tr>
+          <tr><td class="code-cell">updated_at</td><td>DateTime</td><td>Timestamptz</td><td>Auto-updated on edits.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul>
+      <li><strong>Read Privilege</strong>: 
+        <ul>
+          <li><code>PUBLIC</code>: <code>APPROVED</code> status listings only.</li>
+          <li>Listing Owner / Agency Team: Own listings in any status (<code>DRAFT</code>, <code>PENDING</code>, <code>APPROVED</code>, <code>SUSPENDED</code>).</li>
+          <li><code>ADMIN</code>: All listings in all statuses.</li>
+        </ul>
+      </li>
+      <li><strong>Write Privilege</strong>: Listing Owner (create, update in <code>DRAFT</code>), <code>ADMIN</code> (approve, reject, suspend, delete).</li>
+    </ul>
+
+    <h3>3.6. PropertyMedia (`property_media`)</h3>
+    <p>Media files (images, videos, floor plan documents) linked to a property.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field Name</th><th>Type</th><th>Constraints</th><th>Description &amp; Privilege</th></tr></thead>
+        <tbody>
+          <tr><td class="code-cell">id</td><td>UUID</td><td>Primary Key</td><td>Unique media ID.</td></tr>
+          <tr><td class="code-cell">property_id</td><td>UUID</td><td>Foreign Key → Property.id</td><td>Parent property. Cascades on delete.</td></tr>
+          <tr><td class="code-cell">file_url</td><td>String</td><td>VarChar(500)</td><td>Relative path to file (e.g., <code>/uploads/images/800w_abc.webp</code>).</td></tr>
+          <tr><td class="code-cell">media_category</td><td>Enum</td><td>Default: IMAGE</td><td><code>IMAGE</code>, <code>VIDEO</code>, <code>DOCUMENT</code>.</td></tr>
+          <tr><td class="code-cell">sort_order</td><td>Int</td><td>Default: 0</td><td>Display order index.</td></tr>
+          <tr><td class="code-cell">created_at</td><td>DateTime</td><td>Timestamptz</td><td>Upload timestamp.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul>
+      <li><strong>Read Privilege</strong>: Public (media of <code>APPROVED</code> properties), Owner, <code>ADMIN</code>.</li>
+      <li><strong>Write Privilege</strong>: Property Owner, <code>ADMIN</code>.</li>
+    </ul>
+
+    <h3>3.7. PropertyAmenity (`property_amenities`)</h3>
+    <p>Normalized amenities attached to a property (e.g., Parking, Elevator, Security, Generator).</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field Name</th><th>Type</th><th>Constraints</th><th>Description &amp; Privilege</th></tr></thead>
+        <tbody>
+          <tr><td class="code-cell">id</td><td>UUID</td><td>Primary Key</td><td>Unique amenity ID.</td></tr>
+          <tr><td class="code-cell">property_id</td><td>UUID</td><td>Foreign Key → Property.id</td><td>Parent property. Cascades on delete.</td></tr>
+          <tr><td class="code-cell">amenity_name</td><td>String</td><td>VarChar(100)</td><td>Amenity label. Unique per property.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>3.8. PropertyInquiry (`property_inquiries`)</h3>
+    <p>Message inquiries sent from buyers to property owners.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field Name</th><th>Type</th><th>Constraints</th><th>Description &amp; Privilege</th></tr></thead>
+        <tbody>
+          <tr><td class="code-cell">id</td><td>UUID</td><td>Primary Key</td><td>Unique inquiry ID.</td></tr>
+          <tr><td class="code-cell">property_id</td><td>UUID</td><td>Foreign Key → Property.id</td><td>Target property.</td></tr>
+          <tr><td class="code-cell">buyer_id</td><td>UUID</td><td>Foreign Key → User.id</td><td>Sender (<code>BUYER</code> or <code>SELLER</code>).</td></tr>
+          <tr><td class="code-cell">message</td><td>String</td><td>Text</td><td>Inquiry message body (5-2000 chars).</td></tr>
+          <tr><td class="code-cell">status</td><td>String</td><td>Default: "NEW"</td><td>Transition status: <code>"NEW"</code>, <code>"IN_PROGRESS"</code>, <code>"RESOLVED"</code>, <code>"DISMISSED"</code>.</td></tr>
+          <tr><td class="code-cell">created_at</td><td>DateTime</td><td>Timestamptz</td><td>Submission timestamp.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul>
+      <li><strong>Read Privilege</strong>: Sender (Buyer), Property Owner (Seller/Agent), <code>ADMIN</code>.</li>
+      <li><strong>Write Privilege</strong>: <code>BUYER</code>/<code>SELLER</code> (create), Property Owner / <code>ADMIN</code> (update status).</li>
+    </ul>
+
+    <h3>3.9. UserFavorite (`user_favorites`)</h3>
+    <p>User wishlist bookmarks.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field Name</th><th>Type</th><th>Constraints</th><th>Description &amp; Privilege</th></tr></thead>
+        <tbody>
+          <tr><td class="code-cell">id</td><td>UUID</td><td>Primary Key</td><td>Unique favorite ID.</td></tr>
+          <tr><td class="code-cell">user_id</td><td>UUID</td><td>Foreign Key → User.id</td><td>User who favorited. Unique with <code>property_id</code>.</td></tr>
+          <tr><td class="code-cell">property_id</td><td>UUID</td><td>Foreign Key → Property.id</td><td>Favorited property. Cascades on delete.</td></tr>
+          <tr><td class="code-cell">created_at</td><td>DateTime</td><td>Timestamptz</td><td>Timestamp favorited.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul>
+      <li><strong>Read &amp; Write Privilege</strong>: Owner User only.</li>
+    </ul>
+
+    <h3>3.10. BillingInvoice (`billing_invoices`)</h3>
+    <p>Financial records for Chapa promotion payments.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field Name</th><th>Type</th><th>Constraints</th><th>Description &amp; Privilege</th></tr></thead>
+        <tbody>
+          <tr><td class="code-cell">id</td><td>UUID</td><td>Primary Key</td><td>Unique invoice ID.</td></tr>
+          <tr><td class="code-cell">user_id</td><td>UUID</td><td>Foreign Key → User.id</td><td>Payer user ID.</td></tr>
+          <tr><td class="code-cell">amount</td><td>Decimal</td><td>Decimal(10,2)</td><td>Invoice amount in ETB/USD.</td></tr>
+          <tr><td class="code-cell">currency</td><td>String</td><td>Default: "ETB"</td><td><code>"ETB"</code> or <code>"USD"</code>.</td></tr>
+          <tr><td class="code-cell">tx_ref</td><td>String</td><td>Unique, VarChar(100)</td><td>Unique transaction reference string (e.g., <code>ethred_a1b2c3d4...</code>).</td></tr>
+          <tr><td class="code-cell">payment_processor</td><td>String</td><td>Default: "CHAPA"</td><td>Payment gateway provider.</td></tr>
+          <tr><td class="code-cell">status</td><td>Enum</td><td>Default: PENDING</td><td><code>PENDING</code>, <code>COMPLETED</code>, <code>FAILED</code>, <code>REFUNDED</code>.</td></tr>
+          <tr><td class="code-cell">metadata</td><td>Json?</td><td>JSON B</td><td>Payload metadata storing <code>property_id</code> and <code>promotion_tier</code>.</td></tr>
+          <tr><td class="code-cell">created_at</td><td>DateTime</td><td>Timestamptz</td><td>Invoice creation timestamp.</td></tr>
+          <tr><td class="code-cell">updated_at</td><td>DateTime</td><td>Timestamptz</td><td>Status update timestamp.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul>
+      <li><strong>Read Privilege</strong>: Payer User, <code>ADMIN</code>.</li>
+      <li><strong>Write Privilege</strong>: System / Webhook Handler (transitions state on signature verification), <code>ADMIN</code>.</li>
+    </ul>
+
+    <h3>3.11. AuditLog (`audit_logs`)</h3>
+    <p>System-wide audit trail for security and accountability.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field Name</th><th>Type</th><th>Constraints</th><th>Description &amp; Privilege</th></tr></thead>
+        <tbody>
+          <tr><td class="code-cell">id</td><td>UUID</td><td>Primary Key</td><td>Unique log ID.</td></tr>
+          <tr><td class="code-cell">actor_id</td><td>UUID?</td><td>Foreign Key → User.id</td><td>User who performed the action (NULL for system events).</td></tr>
+          <tr><td class="code-cell">action</td><td>String</td><td>VarChar(100)</td><td>Action code (e.g., <code>"PROPERTY_APPROVED"</code>, <code>"USER_BANNED"</code>, <code>"PAYMENT_COMPLETED"</code>).</td></tr>
+          <tr><td class="code-cell">target_table</td><td>String</td><td>VarChar(100)</td><td>Table affected (e.g., <code>"properties"</code>, <code>"users"</code>).</td></tr>
+          <tr><td class="code-cell">target_id</td><td>UUID?</td><td>VarChar/UUID</td><td>ID of affected entity.</td></tr>
+          <tr><td class="code-cell">old_values</td><td>Json?</td><td>JSON B</td><td>State before change.</td></tr>
+          <tr><td class="code-cell">new_values</td><td>Json?</td><td>JSON B</td><td>State after change.</td></tr>
+          <tr><td class="code-cell">created_at</td><td>DateTime</td><td>Timestamptz</td><td>Log entry timestamp.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul>
+      <li><strong>Read Privilege</strong>: <code>ADMIN</code> only.</li>
+      <li><strong>Write Privilege</strong>: Internal system operations only (immutable once written).</li>
+    </ul>
+  </div>
+
+  <!-- ── 4. Key Business Logic Processes & Workflows ── -->
+  <div class="section">
+    <h2>4. Key Business Logic Processes &amp; Workflows</h2>
+
+    <h3>4.1. Authentication &amp; Session Flow</h3>
+    <div class="diagram-box">
+User (Email/Pass) ──► Auth Service ──► Verify Hash ──► Sign Access Token (15m) &amp; Refresh Token (7d)
+                                                                 │
+                                                   Set HTTP-Only Cookie ("ethred_token")
+                                                                 │
+                                              Subsequent Requests: Passport JWT Strategy
+                                              Extracts cookie/Bearer -> Attaches req.user
+    </div>
+
+    <h3>4.2. Property Moderation State Machine</h3>
+    <div class="diagram-box">
+   [SELLER Creates] ──► DRAFT
+                         │
+                         ▼ (Seller Submits)
+                      PENDING ───(Admin Rejects)───► DRAFT (feedback sent)
+                         │
+                         ├────(Admin Approves)─────► APPROVED (live in search)
+                         │                              │
+                         └────(3+ Scam Reports)─────────┴──► SUSPENDED
+    </div>
+
+    <h3>4.3. Chapa Payment &amp; Promotion Workflow</h3>
+    <div class="diagram-box">
+Seller ──► POST /payments/initiate ──► Create PENDING Invoice ──► Request Chapa Checkout URL
+                                                                           │
+                                                                 Seller Pays on Chapa
+                                                                           │
+Chapa Webhook Callback ──► POST /payments/chapa-webhook ◄──────────────────┘
+            │
+            ├─► 1. Verify HMAC-SHA256 Signature (x-chapa-signature)
+            ├─► 2. Call Chapa API to verify tx_ref (anti-replay check)
+            ├─► 3. Transition BillingInvoice status: PENDING ──► COMPLETED
+            ├─► 4. Activate Property Promotion: is_featured = true (30 days)
+            └─► 5. Send Email Receipt to Seller
+    </div>
+
+    <h3>4.4. Automated Scam Suspensions</h3>
+    <p>When a user reports a listing via <code>POST /inquiries/report/:propertyId</code>:</p>
+    <ol>
+      <li>System logs an <code>AuditLog</code> entry with action <code>LISTING_REPORTED</code>.</li>
+      <li>System counts unique report audit logs for that property.</li>
+      <li>If total reports &ge; 3 and listing status is <code>APPROVED</code>:
+        <ul>
+          <li>Listing status is automatically updated to <code>SUSPENDED</code>.</li>
+          <li>System logs <code>LISTING_AUTO_SUSPENDED</code> audit entry.</li>
+        </ul>
+      </li>
+    </ol>
+  </div>
+
+  <!-- ── 5. Complete API Request Reference ── -->
+  <div class="section">
+    <h2>5. Complete API Request Reference</h2>
+
+    <p>Below is the complete list of all endpoints, HTTP methods, authorization schemas required, and expected behaviors.</p>
+
+    <h3>5.1. Authentication Module (`/api/v1/auth`)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Endpoint</th>
+            <th>Method</th>
+            <th>Authorized Roles</th>
+            <th>Request Body / Params</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="code-cell">/register</td><td><span class="method method-post">POST</span></td><td><span class="role-badge role-public">PUBLIC</span></td><td><code>{ email, password, full_name, phone_number }</code></td><td>Registers new user, sends OTP email, returns JWT cookie.</td></tr>
+          <tr><td class="code-cell">/login</td><td><span class="method method-post">POST</span></td><td><span class="role-badge role-public">PUBLIC</span></td><td><code>{ email, password }</code></td><td>Authenticates email + password, sets <code>ethred_token</code> cookie.</td></tr>
+          <tr><td class="code-cell">/logout</td><td><span class="method method-post">POST</span></td><td><span class="role-badge role-seller">ALL AUTH</span></td><td>None</td><td>Clears JWT cookie.</td></tr>
+          <tr><td class="code-cell">/send-otp</td><td><span class="method method-post">POST</span></td><td><span class="role-badge role-public">PUBLIC</span></td><td><code>{ email }</code></td><td>Generates 6-digit OTP in Redis (5m TTL), sends email.</td></tr>
+          <tr><td class="code-cell">/verify-otp</td><td><span class="method method-post">POST</span></td><td><span class="role-badge role-public">PUBLIC</span></td><td><code>{ email, otp }</code></td><td>Validates OTP from Redis, marks <code>is_phone_verified = true</code>.</td></tr>
+          <tr><td class="code-cell">/forgot-password</td><td><span class="method method-post">POST</span></td><td><span class="role-badge role-public">PUBLIC</span></td><td><code>{ email }</code></td><td>Generates password reset token, emails link.</td></tr>
+          <tr><td class="code-cell">/reset-password</td><td><span class="method method-post">POST</span></td><td><span class="role-badge role-public">PUBLIC</span></td><td><code>{ token, new_password }</code></td><td>Resets password with valid token.</td></tr>
+          <tr><td class="code-cell">/google</td><td><span class="method method-get">GET</span></td><td><span class="role-badge role-public">PUBLIC</span></td><td>None</td><td>Redirects to Google OAuth consent screen.</td></tr>
+          <tr><td class="code-cell">/google/callback</td><td><span class="method method-get">GET</span></td><td><span class="role-badge role-public">PUBLIC</span></td><td>OAuth Code</td><td>Google OAuth callback handler. Creates user if new, sets JWT cookie.</td></tr>
+          <tr><td class="code-cell">/me</td><td><span class="method method-get">GET</span></td><td><span class="role-badge role-seller">ALL AUTH</span></td><td>None</td><td>Returns current user profile and role info.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>5.2. Users Module (`/api/v1/users`)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Endpoint</th>
+            <th>Method</th>
+            <th>Authorized Roles</th>
+            <th>Request Body / Params</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="code-cell">/profile</td><td><span class="method method-get">GET</span></td><td><span class="role-badge role-seller">ALL AUTH</span></td><td>None</td><td>Returns user's full profile details.</td></tr>
+          <tr><td class="code-cell">/profile</td><td><span class="method method-put">PUT</span></td><td><span class="role-badge role-seller">ALL AUTH</span></td><td><code>{ full_name, preferred_language }</code></td><td>Updates profile fields.</td></tr>
+          <tr><td class="code-cell">/avatar</td><td><span class="method method-post">POST</span></td><td><span class="role-badge role-seller">ALL AUTH</span></td><td>Multipart Form (<code>avatar</code> image)</td><td>Uploads avatar, transcodes to WebP, updates <code>avatar_url</code>.</td></tr>
+          <tr><td class="code-cell">/id-document</td><td><span class="method method-post">POST</span></td><td><span class="role-badge role-seller">ALL AUTH</span></td><td>Multipart Form (<code>document</code> PDF/Image)</td><td>Uploads national ID or passport for identity verification.</td></tr>
+          <tr><td class="code-cell">/notification-prefs</td><td><span class="method method-get">GET</span></td><td><span class="role-badge role-seller">ALL AUTH</span></td><td>None</td><td>Returns user's email/SMS notification preferences.</td></tr>
+          <tr><td class="code-cell">/notification-prefs</td><td><span class="method method-put">PUT</span></td><td><span class="role-badge role-seller">ALL AUTH</span></td><td><code>{ email_inquiries, email_promotions }</code></td><td>Updates notification settings.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>5.3. Agencies Module (`/api/v1/agencies`)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Endpoint</th>
+            <th>Method</th>
+            <th>Authorized Roles</th>
+            <th>Request Body / Params</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="code-cell">/</td><td><span class="method method-post">POST</span></td><td><span class="role-badge role-seller">SELLER, AGENCY_ADMIN, ADMIN</span></td><td>Multipart Form (<code>agency_name</code>, <code>license</code> PDF)</td><td>Submits agency registration for admin approval.</td></tr>
+          <tr><td class="code-cell">/:id</td><td><span class="method method-get">GET</span></td><td><span class="role-badge role-public">PUBLIC</span></td><td>URL param <code>id</code></td><td>Returns public agency details and active listings.</td></tr>
+          <tr><td class="code-cell">/:id</td><td><span class="method method-put">PUT</span></td><td><span class="role-badge role-agency">AGENCY_ADMIN, ADMIN</span></td><td><code>{ agency_name, logo_url }</code></td><td>Updates agency information.</td></tr>
+          <tr><td class="code-cell">/:id/invite</td><td><span class="method method-post">POST</span></td><td><span class="role-badge role-agency">AGENCY_ADMIN, ADMIN</span></td><td><code>{ email, role }</code></td><td>Sends email invitation link to join agency as an agent.</td></tr>
+          <tr><td class="code-cell">/:id/employees</td><td><span class="method method-get">GET</span></td><td><span class="role-badge role-agency">AGENCY_ADMIN, ADMIN</span></td><td>URL param <code>id</code></td><td>Lists all agents employed by the agency.</td></tr>
+          <tr><td class="code-cell">/:id/employees/:userId</td><td><span class="method method-delete">DELETE</span></td><td><span class="role-badge role-agency">AGENCY_ADMIN, ADMIN</span></td><td>URL params</td><td>Removes agent from agency.</td></tr>
+          <tr><td class="code-cell">/:id/analytics</td><td><span class="method method-get">GET</span></td><td><span class="role-badge role-agency">AGENCY_ADMIN, ADMIN</span></td><td>URL param <code>id</code></td><td>Returns agency performance stats (total listings, inquiries).</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>5.4. Properties Module (`/api/v1/properties`)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Endpoint</th>
+            <th>Method</th>
+            <th>Authorized Roles</th>
+            <th>Request Body / Params</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="code-cell">/search</td><td><span class="method method-get">GET</span></td><td><span class="role-badge role-public">PUBLIC</span></td><td>Query: <code>region, city, sub_city, category, minPrice, maxPrice, bedrooms, lat, lng, radius_km, page, limit</code></td><td>Public listing search with PostGIS geographic radius filtering.</td></tr>
+          <tr><td class="code-cell">/:id</td><td><span class="method method-get">GET</span></td><td><span class="role-badge role-public">PUBLIC</span></td><td>URL param <code>id</code></td><td>Returns complete listing details, media gallery, amenities, and owner info.</td></tr>
+          <tr><td class="code-cell">/</td><td><span class="method method-post">POST</span></td><td><span class="role-badge role-seller">SELLER, AGENCY_ADMIN, AGENCY_AGENT, ADMIN</span></td><td><code>{ title_en, price_etb, category, region, city, sub_city, woreda, bedrooms, bathrooms, area_sqm, latitude, longitude, amenities }</code></td><td>Creates a new listing in <code>DRAFT</code> status.</td></tr>
+          <tr><td class="code-cell">/:id</td><td><span class="method method-put">PUT</span></td><td><span class="role-badge role-seller">Owner, ADMIN</span></td><td>Same as POST</td><td>Updates property fields. Resets status to <code>DRAFT</code> if edited.</td></tr>
+          <tr><td class="code-cell">/:id</td><td><span class="method method-delete">DELETE</span></td><td><span class="role-badge role-seller">Owner, ADMIN</span></td><td>URL param <code>id</code></td><td>Soft-deletes listing by setting status to <code>ARCHIVED</code>.</td></tr>
+          <tr><td class="code-cell">/:id/submit</td><td><span class="method method-post">POST</span></td><td><span class="role-badge role-seller">Owner</span></td><td>URL param <code>id</code></td><td>Transitions property status from <code>DRAFT</code> → <code>PENDING</code> for admin moderation.</td></tr>
+          <tr><td class="code-cell">/:id/media/images</td><td><span class="method method-post">POST</span></td><td><span class="role-badge role-seller">Owner, ADMIN</span></td><td>Multipart Form (<code>images</code> array)</td><td>Uploads images, transcodes to 400px/800px/1200px WebP.</td></tr>
+          <tr><td class="code-cell">/:id/media/documents</td><td><span class="method method-post">POST</span></td><td><span class="role-badge role-seller">Owner, ADMIN</span></td><td>Multipart Form (<code>documents</code> array)</td><td>Uploads PDF floor plans / title deed documents.</td></tr>
+          <tr><td class="code-cell">/:id/media/:mediaId</td><td><span class="method method-delete">DELETE</span></td><td><span class="role-badge role-seller">Owner, ADMIN</span></td><td>URL params</td><td>Removes specific media item.</td></tr>
+          <tr><td class="code-cell">/</td><td><span class="method method-get">GET</span></td><td><span class="role-badge role-seller">SELLER, AGENCY_ADMIN, AGENCY_AGENT, ADMIN</span></td><td>Query: <code>status, page, limit</code></td><td>Returns seller's own listings across all statuses.</td></tr>
+          <tr><td class="code-cell">/:id/stats</td><td><span class="method method-get">GET</span></td><td><span class="role-badge role-seller">Owner, ADMIN</span></td><td>URL param <code>id</code></td><td>Returns listing analytics (view counts, favorites count, total inquiries).</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>5.5. Favorites Module (`/api/v1/favorites`)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Endpoint</th>
+            <th>Method</th>
+            <th>Authorized Roles</th>
+            <th>Request Body / Params</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="code-cell">/:propertyId</td><td><span class="method method-post">POST</span></td><td><span class="role-badge role-seller">ALL AUTH</span></td><td>URL param <code>propertyId</code></td><td>Upserts property into user's favorites list.</td></tr>
+          <tr><td class="code-cell">/:propertyId</td><td><span class="method method-delete">DELETE</span></td><td><span class="role-badge role-seller">ALL AUTH</span></td><td>URL param <code>propertyId</code></td><td>Removes property from favorites list.</td></tr>
+          <tr><td class="code-cell">/</td><td><span class="method method-get">GET</span></td><td><span class="role-badge role-seller">ALL AUTH</span></td><td>Query: <code>page, limit</code></td><td>Lists user's favorited properties with pagination.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>5.6. Inquiries Module (`/api/v1/inquiries`)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Endpoint</th>
+            <th>Method</th>
+            <th>Authorized Roles</th>
+            <th>Request Body / Params</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="code-cell">/</td><td><span class="method method-post">POST</span></td><td><span class="role-badge role-buyer">BUYER, SELLER, AGENCY_ADMIN, AGENCY_AGENT</span></td><td><code>{ property_id, message }</code></td><td>Sends inquiry message to property seller. Triggers email notification.</td></tr>
+          <tr><td class="code-cell">/</td><td><span class="method method-get">GET</span></td><td><span class="role-badge role-seller">ALL AUTH</span></td><td>Query: <code>page, limit</code></td><td>Lists buyer's own sent inquiries.</td></tr>
+          <tr><td class="code-cell">/received</td><td><span class="method method-get">GET</span></td><td><span class="role-badge role-seller">SELLER, AGENCY_ADMIN, AGENCY_AGENT, ADMIN</span></td><td>Query: <code>status, page, limit</code></td><td>Lists inquiries received on seller's properties.</td></tr>
+          <tr><td class="code-cell">/:id</td><td><span class="method method-get">GET</span></td><td><span class="role-badge role-seller">Sender, Seller, ADMIN</span></td><td>URL param <code>id</code></td><td>Returns single inquiry detail.</td></tr>
+          <tr><td class="code-cell">/:id/status</td><td><span class="method method-patch">PATCH</span></td><td><span class="role-badge role-seller">Seller, ADMIN</span></td><td><code>{ status: "RESOLVED" }</code></td><td>Updates inquiry status (<code>NEW</code> → <code>IN_PROGRESS</code> → <code>RESOLVED</code>).</td></tr>
+          <tr><td class="code-cell">/report/:propertyId</td><td><span class="method method-post">POST</span></td><td><span class="role-badge role-buyer">BUYER, SELLER</span></td><td><code>{ reason }</code></td><td>Reports suspicious/scam listing. Triggers auto-suspension at 3 reports.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>5.7. Payments Module (`/api/v1/payments`)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Endpoint</th>
+            <th>Method</th>
+            <th>Authorized Roles</th>
+            <th>Request Body / Params</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="code-cell">/initiate</td><td><span class="method method-post">POST</span></td><td><span class="role-badge role-seller">SELLER, AGENCY_ADMIN, ADMIN</span></td><td><code>{ property_id, promotion_tier, currency }</code></td><td>Creates <code>PENDING</code> invoice, calls Chapa API, returns checkout URL.</td></tr>
+          <tr><td class="code-cell">/invoices</td><td><span class="method method-get">GET</span></td><td><span class="role-badge role-seller">ALL AUTH</span></td><td>Query: <code>status, page, limit</code></td><td>Lists user's billing invoices.</td></tr>
+          <tr><td class="code-cell">/invoices/:id</td><td><span class="method method-get">GET</span></td><td><span class="role-badge role-seller">Owner, ADMIN</span></td><td>URL param <code>id</code></td><td>Returns single invoice details.</td></tr>
+          <tr><td class="code-cell">/chapa-webhook</td><td><span class="method method-post">POST</span></td><td><span class="role-badge role-public">PUBLIC (HMAC Validated)</span></td><td>Raw Body + <code>x-chapa-signature</code> header</td><td>Public webhook handler for Chapa. Verifies signature, completes invoice, boosts listing.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>5.8. Admin Module (`/api/v1/admin`) — Strict ADMIN Only</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Endpoint</th>
+            <th>Method</th>
+            <th>Authorized Roles</th>
+            <th>Request Body / Params</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="code-cell">/dashboard</td><td><span class="method method-get">GET</span></td><td><span class="role-badge role-admin">ADMIN ONLY</span></td><td>None</td><td>Returns platform-wide KPIs: total users by role, properties by category, revenue.</td></tr>
+          <tr><td class="code-cell">/properties/pending</td><td><span class="method method-get">GET</span></td><td><span class="role-badge role-admin">ADMIN ONLY</span></td><td>Query: <code>page, limit</code></td><td>Returns queue of listings awaiting admin review (<code>status = PENDING</code>).</td></tr>
+          <tr><td class="code-cell">/properties/:id/approve</td><td><span class="method method-patch">PATCH</span></td><td><span class="role-badge role-admin">ADMIN ONLY</span></td><td>URL param <code>id</code></td><td>Approves listing (<code>PENDING</code> → <code>APPROVED</code>). Emails seller.</td></tr>
+          <tr><td class="code-cell">/properties/:id/suspend</td><td><span class="method method-patch">PATCH</span></td><td><span class="role-badge role-admin">ADMIN ONLY</span></td><td><code>{ reason }</code></td><td>Suspends listing (<code>APPROVED</code> → <code>SUSPENDED</code>). Emails seller.</td></tr>
+          <tr><td class="code-cell">/properties/:id/reject</td><td><span class="method method-patch">PATCH</span></td><td><span class="role-badge role-admin">ADMIN ONLY</span></td><td><code>{ reason }</code></td><td>Rejects listing back to <code>DRAFT</code> with feedback. Emails seller.</td></tr>
+          <tr><td class="code-cell">/users</td><td><span class="method method-get">GET</span></td><td><span class="role-badge role-admin">ADMIN ONLY</span></td><td>Query: <code>role, search, page, limit</code></td><td>Lists all registered users with filters.</td></tr>
+          <tr><td class="code-cell">/users/:id</td><td><span class="method method-get">GET</span></td><td><span class="role-badge role-admin">ADMIN ONLY</span></td><td>URL param <code>id</code></td><td>Returns detailed user profile, property count, identity state.</td></tr>
+          <tr><td class="code-cell">/users/:id/ban</td><td><span class="method method-patch">PATCH</span></td><td><span class="role-badge role-admin">ADMIN ONLY</span></td><td><code>{ reason }</code></td><td>Bans user account and logs audit entry.</td></tr>
+          <tr><td class="code-cell">/users/:id/verify-identity</td><td><span class="method method-patch">PATCH</span></td><td><span class="role-badge role-admin">ADMIN ONLY</span></td><td>URL param <code>id</code></td><td>Marks user identity as verified (<code>is_identity_verified = true</code>).</td></tr>
+          <tr><td class="code-cell">/users/:id/role</td><td><span class="method method-patch">PATCH</span></td><td><span class="role-badge role-admin">ADMIN ONLY</span></td><td><code>{ role }</code></td><td>Changes user's RBAC role.</td></tr>
+          <tr><td class="code-cell">/agencies/pending</td><td><span class="method method-get">GET</span></td><td><span class="role-badge role-admin">ADMIN ONLY</span></td><td>None</td><td>Lists pending agency registration applications (<code>is_approved = false</code>).</td></tr>
+          <tr><td class="code-cell">/agencies/:id/approve</td><td><span class="method method-patch">PATCH</span></td><td><span class="role-badge role-admin">ADMIN ONLY</span></td><td>URL param <code>id</code></td><td>Approves agency and elevates agency creator's role to <code>AGENCY_ADMIN</code>.</td></tr>
+          <tr><td class="code-cell">/agencies/:id/reject</td><td><span class="method method-patch">PATCH</span></td><td><span class="role-badge role-admin">ADMIN ONLY</span></td><td><code>{ reason }</code></td><td>Rejects agency application with feedback.</td></tr>
+          <tr><td class="code-cell">/audit-logs</td><td><span class="method method-get">GET</span></td><td><span class="role-badge role-admin">ADMIN ONLY</span></td><td>Query: <code>action, target_table, actor_id, page, limit</code></td><td>Returns searchable system audit log history.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="text-align:center; padding: 40px 0; color: var(--text-dim); font-size: 0.75rem; border-top: 1px solid var(--border);">
+      Ethred Backend Specification · Version 1.0.0 · July 2026
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

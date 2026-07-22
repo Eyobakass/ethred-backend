@@ -3,17 +3,79 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ethred Backend</title>
+  <title>Ethred Real Estate API</title>
   <style>
-    body {font-family: Arial, sans-serif; background:#111;color:#eee;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;}
-    a {color:#ffb400;text-decoration:none; font-size:1.2rem;}
-    a:hover {text-decoration:underline;}
+    body {
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #0d0f12;
+      color: #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+      text-align: center;
+    }
+    .card {
+      background: #1a1d24;
+      border: 1px solid #2d3748;
+      border-radius: 16px;
+      padding: 40px;
+      max-width: 500px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+    h1 {
+      color: #f59e0b;
+      margin-top: 0;
+      font-size: 2rem;
+    }
+    p {
+      color: #a0aec0;
+      line-height: 1.6;
+    }
+    .links {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 24px;
+    }
+    a.btn {
+      display: block;
+      background: #252b36;
+      color: #fbbf24;
+      text-decoration: none;
+      padding: 14px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      border: 1px solid #374151;
+      transition: all 0.2s ease;
+    }
+    a.btn:hover {
+      background: #fbbf24;
+      color: #0d0f12;
+      transform: translateY(-2px);
+    }
+    code {
+      background: #111827;
+      color: #10b981;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body>
-  <h1>Welcome to the Ethred Backend API</h1>
-  <p>Use the API under the <code>/api/v1</code> path.</p>
-  <p><a href="/api/v1/health">Health Check</a></p>
-  <p><a href="/ETHRED_MANUAL.html" target="_blank">Developer Manual (HTML)</a></p>
+  <div class="card">
+    <h1>Ethred Backend API</h1>
+    <p>Modern Ethiopian Real Estate Ecosystem API</p>
+    <p>Base API Route: <code>/api/v1</code></p>
+    <div class="links">
+      <a class="btn" href="/api/v1/health">🔍 API Health Check (/api/v1/health)</a>
+      <a class="btn" href="/ETHRED_MANUAL.html" target="_blank">📖 Developer Manual (HTML)</a>
+      <a class="btn" href="/ETHRED_SPECIFICATION.html" target="_blank">📋 Technical Specification & API Matrix</a>
+    </div>
+  </div>
 </body>
 </html>
