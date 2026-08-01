@@ -4,6 +4,7 @@ const controller = require('./controller');
 const authenticate = require('../../middleware/authenticate');
 const authorize = require('../../middleware/authorize');
 const { uploadImages, uploadDocument, processImages, saveDocument } = require('../../middleware/upload');
+const { uploadPanorama, processPanorama } = require('../../middleware/uploadTour');
 
 // ── Public routes ─────────────────────────────────────────────────────────────
 // SRS REQ-SRCH-01: Search with filters
@@ -11,6 +12,10 @@ router.get('/search', controller.searchProperties);
 
 // Public property detail
 router.get('/:id', controller.getProperty);
+
+// GET /api/v1/properties/:id/tour — public tour config (SRS §8.2, REQ-TOUR-VIEW-01)
+// IMPORTANT: must come before router.use(authenticate) so it remains public
+router.get('/:id/tour', controller.getTourConfig);
 
 // ── Protected routes ──────────────────────────────────────────────────────────
 router.use(authenticate);
@@ -70,5 +75,23 @@ router.get('/:id/stats',
   authorize('SELLER', 'AGENCY_ADMIN', 'AGENCY_AGENT', 'ADMIN'),
   controller.getListingStats
 );
+
+// ── Tour Routes (SRS-ETHRED-2026-VT-1.0) ─────────────────────────────────
+
+// Upload a 360° panorama as a tour scene (SRS §8.1, REQ-TOUR-ING-01)
+// Query params: scene_name, initial_yaw
+router.post('/:id/media/tour-scene',
+  authorize('SELLER', 'AGENCY_ADMIN', 'AGENCY_AGENT', 'ADMIN'),
+  uploadPanorama.single('file'),   // multer: memory storage, JPEG/PNG only
+  processPanorama,                  // sharp: validate 2:1, downsample, save
+  controller.uploadTourScene
+);
+
+// Bulk reorder tour scenes (SRS §8.7, REQ-TOUR-AUTH-08)
+router.patch('/:id/tour/reorder',
+  authorize('SELLER', 'AGENCY_ADMIN', 'AGENCY_AGENT', 'ADMIN'),
+  controller.reorderTourScenes
+);
+
 
 module.exports = router;

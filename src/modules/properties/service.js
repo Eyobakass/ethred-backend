@@ -277,7 +277,152 @@ const getListingStats = async (propertyId, user) => {
   return { property_id: cleanId, favorites_count: favorites, inquiries_count: inquiries };
 };
 
+// ── Tour Service Methods (SRS-ETHRED-2026-VT-1.0) ───────────────────────────
+
+/**
+ * Build the Pannellum-compatible tour config JSON for a property.
+ * GET /api/v1/properties/:id/tour (SRS §8.2)
+ * Public endpoint — no auth required.
+ */
+const getTourConfig = async (propertyId) => {
+  const cleanId = sanitizeId(propertyId);
+
+  // Verify property exists
+  const property = await prisma.property.findUnique({
+    where: { id: cleanId },
+    select: { id: true, external_tour_url: true },
+  });
+  if (!property) throw new ApiError('Property not found.', 404, 'PROPERTY_NOT_FOUND');
+
+  // Fetch all tour scenes with their hotspots, ordered by sort_order
+  const scenes = await prisma.propertyMedia.findMany({
+    where: { property_id: cleanId, is_tour_scene: true },
+    include: { hotspots: true },
+    orderBy: { sort_order: 'asc' },
+  });
+
+  if (scenes.length === 0) {
+    throw new ApiError('This property has no virtual tour.', 404, 'NO_TOUR_AVAILABLE');
+  }
+
+  // Build Pannellum config (SRS §5.2)
+  const tourConfig = {
+    default: {
+      firstScene: scenes[0].id,
+      sceneFadeDuration: 1000,
+      autoLoad: true,
+      showControls: true,
+      keyboardZoom: false,
+    },
+    scenes: Object.fromEntries(
+      scenes.map((s) => [
+        s.id,
+        {
+          title: s.scene_name ?? 'Room',
+          type: 'equirectangular',
+          panorama: s.file_url,
+          yaw: s.initial_yaw ?? 0,
+          hotSpots: s.hotspots
+            // Filter out orphaned NAVIGATION hotspots (target deleted)
+            .filter((h) => h.type !== 'NAVIGATION' || h.target_scene_id !== null)
+            .map((h) => ({
+              pitch: h.pitch,
+              yaw: h.yaw,
+              type: h.type === 'NAVIGATION' ? 'scene' : 'info',
+              text: h.label ?? '',
+              ...(h.type === 'NAVIGATION' && { sceneId: h.target_scene_id }),
+              cssClass: h.type === 'NAVIGATION' ? 'tour-nav-hotspot' : 'tour-info-hotspot',
+            })),
+        },
+      ])
+    ),
+    // Pass through external_tour_url so the client can decide whether to use Matterport embed
+    meta: {
+      property_id: cleanId,
+      scene_count: scenes.length,
+      external_tour_url: property.external_tour_url ?? null,
+    },
+  };
+
+  return tourConfig;
+};
+
+/**
+ * Create a PropertyMedia row for an uploaded 360° tour scene.
+ * Called after uploadPanorama + processPanorama middleware.
+ * POST /api/v1/properties/:id/media/tour-scene (SRS §8.1)
+ */
+const uploadTourScene = async (propertyId, user, tourSceneData, query) => {
+  const cleanId = sanitizeId(propertyId);
+  const property = await prisma.property.findUnique({ where: { id: cleanId } });
+  if (!property) throw new ApiError('Property not found.', 404, 'PROPERTY_NOT_FOUND');
+  ensureOwnerOrAdmin(property, user);
+
+  const { file_url, gpano_confirmed } = tourSceneData;
+
+  const sceneName = typeof query.scene_name === 'string'
+    ? query.scene_name.trim() || null
+    : null;
+
+  let initialYaw = 0;
+  if (query.initial_yaw !== undefined) {
+    const y = parseFloat(query.initial_yaw);
+    if (!isNaN(y) && y >= 0 && y < 360) initialYaw = y;
+  }
+
+  // Determine sort_order (append after existing scenes)
+  const maxOrder = await prisma.propertyMedia.aggregate({
+    where: { property_id: cleanId },
+    _max: { sort_order: true },
+  });
+  const sortOrder = (maxOrder._max.sort_order ?? -1) + 1;
+
+  const media = await prisma.propertyMedia.create({
+    data: {
+      property_id: cleanId,
+      file_url,
+      media_category: 'IMAGE',
+      sort_order: sortOrder,
+      is_tour_scene: true,
+      needs_repair: true,
+      scene_name: sceneName,
+      initial_yaw: initialYaw,
+    },
+  });
+
+  return { ...media, gpano_confirmed };
+};
+
+/**
+ * Update sort_order for multiple tour scenes in a single transaction.
+ * PATCH /api/v1/properties/:id/tour/reorder (SRS §8.7)
+ */
+const reorderTourScenes = async (propertyId, user, sceneOrder) => {
+  const cleanId = sanitizeId(propertyId);
+  const property = await prisma.property.findUnique({ where: { id: cleanId } });
+  if (!property) throw new ApiError('Property not found.', 404, 'PROPERTY_NOT_FOUND');
+  ensureOwnerOrAdmin(property, user);
+
+  if (!Array.isArray(sceneOrder) || sceneOrder.length === 0) {
+    throw new ApiError('scene_order must be a non-empty array.', 400);
+  }
+
+  // Run all updates in a transaction
+  const updates = await prisma.$transaction(
+    sceneOrder.map(({ scene_id, sort_order }) =>
+      prisma.propertyMedia.update({
+        where: { id: scene_id, property_id: cleanId },
+        data: { sort_order: parseInt(sort_order) },
+      })
+    )
+  );
+
+  return { updated: updates.length };
+};
+
 module.exports = {
   searchProperties, getProperty, createProperty, updateProperty, deleteProperty,
   submitForReview, attachMedia, deleteMedia, getMyListings, getListingStats,
+  // Tour
+  getTourConfig, uploadTourScene, reorderTourScenes,
 };

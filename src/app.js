@@ -19,6 +19,8 @@ const favoriteRoutes = require('./modules/favorites/routes');
 const inquiryRoutes = require('./modules/inquiries/routes');
 const paymentRoutes = require('./modules/payments/routes');
 const adminRoutes = require('./modules/admin/routes');
+const hotspotRoutes = require('./modules/hotspots/routes');  // SRS-ETHRED-2026-VT
+const mediaRoutes = require('./modules/media/routes');        // SRS-ETHRED-2026-VT
 
 // Passport strategy setup
 require('./config/passport');
@@ -34,7 +36,7 @@ app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Internal-Service-Key'],
 }));
 app.use(cookieParser());
 
@@ -86,6 +88,8 @@ app.use(`${API_PREFIX}/favorites`, favoriteRoutes);
 app.use(`${API_PREFIX}/inquiries`, inquiryRoutes);
 app.use(`${API_PREFIX}/payments`, paymentRoutes);
 app.use(`${API_PREFIX}/admin`, adminRoutes);
+app.use(`${API_PREFIX}/hotspots`, hotspotRoutes);  // SRS-ETHRED-2026-VT: hotspot CRUD
+app.use(`${API_PREFIX}/media`, mediaRoutes);        // SRS-ETHRED-2026-VT: media update + repair poll
 
 // ── 404 Handler ───────────────────────────────────────────────────────────────
 app.use((req, res) => {

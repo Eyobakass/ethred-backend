@@ -62,6 +62,13 @@ enum MediaType {
   @@map("media_type")
 }
 
+enum HotspotType {
+  NAVIGATION
+  INFO
+
+  @@map("hotspot_type")
+}
+
 enum PaymentStatus {
   PENDING
   COMPLETED
@@ -171,11 +178,13 @@ model Property {
   area_sqm         Decimal         @db.Decimal(10, 2)
   status           PropertyStatus  @default(DRAFT)
   // Promotion fields (SRS Section 8.3)
-  is_featured      Boolean         @default(false)
-  featured_tier    String?         @db.VarChar(50)
-  featured_until   DateTime?       @db.Timestamptz
-  created_at       DateTime        @default(now()) @db.Timestamptz
-  updated_at       DateTime        @updatedAt @db.Timestamptz
+  is_featured        Boolean         @default(false)
+  featured_tier      String?         @db.VarChar(50)
+  featured_until     DateTime?       @db.Timestamptz
+  // Virtual tour — opportunistic Matterport embed (SRS-ETHRED-2026-VT §5, UC-05)
+  external_tour_url  String?         @db.VarChar(500)
+  created_at         DateTime        @default(now()) @db.Timestamptz
+  updated_at         DateTime        @updatedAt @db.Timestamptz
 
   // Relations
   owner            User               @relation("PropertyOwner", fields: [owner_id], references: [id], onDelete: Cascade)
@@ -204,9 +213,37 @@ model PropertyMedia {
   sort_order      Int       @default(0)
   created_at      DateTime  @default(now()) @db.Timestamptz
 
-  property        Property  @relation(fields: [property_id], references: [id], onDelete: Cascade)
+  // ── Virtual Tour Fields (SRS-ETHRED-2026-VT §6.1) ──────────────────────────
+  // All nullable/defaulted — additive change, safe for existing rows
+  is_tour_scene   Boolean   @default(false)     // marks this as a 360° panorama scene
+  scene_name      String?   @db.VarChar(150)    // "Living Room", "Kitchen", etc.
+  initial_yaw     Float?    @default(0)         // starting camera direction 0-360
+  needs_repair    Boolean   @default(false)     // set true on upload; cleared by repair worker
 
+  property        Property  @relation(fields: [property_id], references: [id], onDelete: Cascade)
+  hotspots        Hotspot[] @relation("SceneHotspots")
+
+  @@index([property_id])
   @@map("property_media")
+}
+
+// ─── Hotspots Table (SRS-ETHRED-2026-VT §6.1) ────────────────────────────────
+
+model Hotspot {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  scene_id         String        @db.Uuid
+  type             HotspotType   // NAVIGATION | INFO
+  yaw              Float         // horizontal angle 0–360
+  pitch            Float         // vertical angle –90 to +90
+  target_scene_id  String?       @db.Uuid   // required when type = NAVIGATION
+  label            String?       @db.VarChar(255)
+  created_at       DateTime      @default(now()) @db.Timestamptz
+  updated_at       DateTime      @updatedAt @db.Timestamptz
+
+  scene            PropertyMedia @relation("SceneHotspots", fields: [scene_id], references: [id], onDelete: Cascade)
+
+  @@index([scene_id])
+  @@map("hotspots")
 }
 
 // ─── Property Amenities Table ─────────────────────────────────────────────────
