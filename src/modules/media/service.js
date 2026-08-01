@@ -81,6 +81,20 @@ const updateMedia = async (mediaId, body, user, req) => {
     if (isNaN(order) || order < 0) throw new ApiError('sort_order must be a non-negative integer.', 400);
     updateData.sort_order = order;
   }
+  if (body.fp_x !== undefined) {
+    const x = body.fp_x === null ? null : parseFloat(body.fp_x);
+    if (x !== null && (isNaN(x) || x < 0 || x > 100)) {
+      throw new ApiError('fp_x must be in percentage range [0, 100].', 400);
+    }
+    updateData.fp_x = x;
+  }
+  if (body.fp_y !== undefined) {
+    const y = body.fp_y === null ? null : parseFloat(body.fp_y);
+    if (y !== null && (isNaN(y) || y < 0 || y > 100)) {
+      throw new ApiError('fp_y must be in percentage range [0, 100].', 400);
+    }
+    updateData.fp_y = y;
+  }
 
   if (Object.keys(updateData).length === 0) {
     throw new ApiError('No valid fields provided.', 400);

@@ -183,6 +183,8 @@ model Property {
   featured_until     DateTime?       @db.Timestamptz
   // Virtual tour — opportunistic Matterport embed (SRS-ETHRED-2026-VT §5, UC-05)
   external_tour_url  String?         @db.VarChar(500)
+  // Floor plan image for the 2D overlay (SRS-ETHRED-2026-VT §7.4, Phase 2)
+  floor_plan_url     String?         @db.VarChar(500)
   created_at         DateTime        @default(now()) @db.Timestamptz
   updated_at         DateTime        @updatedAt @db.Timestamptz
 
@@ -219,6 +221,13 @@ model PropertyMedia {
   scene_name      String?   @db.VarChar(150)    // "Living Room", "Kitchen", etc.
   initial_yaw     Float?    @default(0)         // starting camera direction 0-360
   needs_repair    Boolean   @default(false)     // set true on upload; cleared by repair worker
+
+  // ── Floor Plan Pin Coordinates (SRS-ETHRED-2026-VT §7.4, Phase 2) ───────────
+  // Position of this scene's pin on the floor plan image, expressed as
+  // a percentage (0-100) of the image's width/height.
+  // NULL = pin not yet placed by agent.
+  fp_x            Float?                        // horizontal %, 0 = left edge
+  fp_y            Float?                        // vertical %, 0 = top edge
 
   property        Property  @relation(fields: [property_id], references: [id], onDelete: Cascade)
   hotspots        Hotspot[] @relation("SceneHotspots")

@@ -128,9 +128,24 @@ const reorderTourScenes = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+/**
+ * POST /api/v1/properties/:id/floor-plan
+ * Upload or update floor plan image for a property.
+ */
+const uploadFloorPlan = async (req, res, next) => {
+  try {
+    const fileUrl = req.savedDocument?.file_url || req.body.file_url;
+    if (!fileUrl) {
+      return res.status(400).json({ success: false, message: 'No floor plan file or URL provided.' });
+    }
+    const property = await PropertyService.uploadFloorPlan(req.params.id, req.user, fileUrl);
+    res.status(200).json({ success: true, data: property });
+  } catch (err) { next(err); }
+};
+
 module.exports = {
   searchProperties, getProperty, createProperty, updateProperty, deleteProperty,
   submitForReview, uploadImages, uploadDocument, deleteMedia, getMyListings, getListingStats,
   // Tour
-  getTourConfig, uploadTourScene, reorderTourScenes,
+  getTourConfig, uploadTourScene, reorderTourScenes, uploadFloorPlan,
 };

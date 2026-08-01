@@ -290,7 +290,7 @@ const getTourConfig = async (propertyId) => {
   // Verify property exists
   const property = await prisma.property.findUnique({
     where: { id: cleanId },
-    select: { id: true, external_tour_url: true },
+    select: { id: true, external_tour_url: true, floor_plan_url: true },
   });
   if (!property) throw new ApiError('Property not found.', 404, 'PROPERTY_NOT_FOUND');
 
@@ -322,6 +322,8 @@ const getTourConfig = async (propertyId) => {
           type: 'equirectangular',
           panorama: s.file_url,
           yaw: s.initial_yaw ?? 0,
+          fp_x: s.fp_x ?? null,
+          fp_y: s.fp_y ?? null,
           hotSpots: s.hotspots
             // Filter out orphaned NAVIGATION hotspots (target deleted)
             .filter((h) => h.type !== 'NAVIGATION' || h.target_scene_id !== null)
@@ -336,15 +338,34 @@ const getTourConfig = async (propertyId) => {
         },
       ])
     ),
-    // Pass through external_tour_url so the client can decide whether to use Matterport embed
+    // Pass through external_tour_url and floor_plan_url
     meta: {
       property_id: cleanId,
       scene_count: scenes.length,
       external_tour_url: property.external_tour_url ?? null,
+      floor_plan_url: property.floor_plan_url ?? null,
     },
   };
 
   return tourConfig;
+};
+
+/**
+ * Save or update floor_plan_url on a Property.
+ * POST /api/v1/properties/:id/floor-plan (SRS-ETHRED-2026-VT §7.4)
+ */
+const uploadFloorPlan = async (propertyId, user, fileUrl) => {
+  const cleanId = sanitizeId(propertyId);
+  const property = await prisma.property.findUnique({ where: { id: cleanId } });
+  if (!property) throw new ApiError('Property not found.', 404, 'PROPERTY_NOT_FOUND');
+  ensureOwnerOrAdmin(property, user);
+
+  const updated = await prisma.property.update({
+    where: { id: cleanId },
+    data: { floor_plan_url: fileUrl, updated_at: new Date() },
+  });
+
+  return updated;
 };
 
 /**
@@ -424,5 +445,5 @@ module.exports = {
   searchProperties, getProperty, createProperty, updateProperty, deleteProperty,
   submitForReview, attachMedia, deleteMedia, getMyListings, getListingStats,
   // Tour
-  getTourConfig, uploadTourScene, reorderTourScenes,
+  getTourConfig, uploadTourScene, reorderTourScenes, uploadFloorPlan,
 };

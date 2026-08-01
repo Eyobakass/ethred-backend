@@ -93,5 +93,14 @@ router.patch('/:id/tour/reorder',
   controller.reorderTourScenes
 );
 
+// Upload floor plan image for tour (SRS §7.4, REQ-TOUR-FP-01)
+router.post('/:id/floor-plan',
+  authorize('SELLER', 'AGENCY_ADMIN', 'AGENCY_AGENT', 'ADMIN'),
+  (req, _res, next) => { req.docSubDir = 'floorplans'; next(); },
+  uploadDocument.single('file'),
+  saveDocument,
+  controller.uploadFloorPlan
+);
+
 
 module.exports = router;
