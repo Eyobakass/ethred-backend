@@ -98,16 +98,23 @@ const processPanorama = async (req, res, next) => {
       });
     }
 
-    // ── 4. Save as JPEG ────────────────────────────────────────────────────────
+    // ── 4. Save as JPEG & generate persistent Data URL ─────────────────────────
+    const outputBuffer = await pipeline.jpeg({ quality: 85, progressive: true }).toBuffer();
+
     const uuid = crypto.randomUUID();
     const outputFilename = `${uuid}.jpg`;
     const outputPath = path.join(toursDir, outputFilename);
 
-    await pipeline.jpeg({ quality: 92, progressive: true }).toFile(outputPath);
+    try {
+      await fs.promises.writeFile(outputPath, outputBuffer);
+    } catch (_) { /* Best-effort local file write */ }
+
+    // Persistent base64 Data URL (immune to Render container restarts/wipes)
+    const fileUrl = `data:image/jpeg;base64,${outputBuffer.toString('base64')}`;
 
     // ── 5. Attach result to request ────────────────────────────────────────────
     req.tourScene = {
-      file_url: `/uploads/tours/${outputFilename}`,
+      file_url: fileUrl,
       gpano_confirmed: gpanoConfirmed,
       original_width: width,
       original_height: height,
