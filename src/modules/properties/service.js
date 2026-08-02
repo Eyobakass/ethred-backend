@@ -242,11 +242,17 @@ const attachMedia = async (propertyId, user, files, mediaType) => {
 
 const deleteMedia = async (propertyId, mediaId, user) => {
   const cleanId = sanitizeId(propertyId);
+  const cleanMediaId = sanitizeId(mediaId);
   const property = await prisma.property.findUnique({ where: { id: cleanId } });
-  if (!property) throw new ApiError('Property not found.', 404);
+  if (!property) throw new ApiError('Property not found.', 404, 'PROPERTY_NOT_FOUND');
   ensureOwnerOrAdmin(property, user);
 
-  await prisma.propertyMedia.delete({ where: { id: mediaId } });
+  const media = await prisma.propertyMedia.findUnique({ where: { id: cleanMediaId } });
+  if (!media || media.property_id !== cleanId) {
+    throw new ApiError('Media record not found.', 404, 'MEDIA_NOT_FOUND');
+  }
+
+  await prisma.propertyMedia.delete({ where: { id: cleanMediaId } });
 };
 
 const getMyListings = async (user, query) => {
