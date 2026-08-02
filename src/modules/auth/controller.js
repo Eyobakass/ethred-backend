@@ -4,18 +4,13 @@ const { signToken, setCookieToken, clearCookieToken } = require('../../utils/jwt
 const sendAuthResponse = (res, user, token, statusCode = 200, extra = {}) => {
   setCookieToken(res, token);
   
-  const isMobileClient = res.req.headers['x-client-type'] === 'mobile';
-  
   const responsePayload = {
     success: true,
     user,
+    token,
+    jwt: token,
     ...extra,
   };
-
-  // Only include raw JWT in JSON body if explicitly requested by a mobile app
-  if (isMobileClient) {
-    responsePayload.jwt = token;
-  }
 
   return res.status(statusCode).json(responsePayload);
 };
