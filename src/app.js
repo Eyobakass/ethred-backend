@@ -32,11 +32,24 @@ const API_PREFIX = process.env.API_PREFIX || '/api/v1';
 
 // ── Security ────────────────────────────────────────────────────────────────
 app.use(helmet());
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3000',
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin) || origin.startsWith('http://localhost:')) {
+      return callback(null, true);
+    }
+    return callback(null, true); // Permissive CORS for API client flexibility
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Internal-Service-Key'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Internal-Service-Key', 'X-Client-Type', 'x-client-type'],
 }));
 app.use(cookieParser());
 
