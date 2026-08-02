@@ -10,7 +10,7 @@ const MediaService = require('./service');
  */
 const updateMedia = async (req, res, next) => {
   try {
-    const media = await MediaService.updateMedia(req.params.id, req.body, req.user, req);
+    const media = await MediaService.updateMedia(req.params.id, req.body, req.user ?? null, req);
     res.json({ success: true, data: media });
   } catch (err) { next(err); }
 };

@@ -54,6 +54,7 @@ const updateMedia = async (mediaId, body, user, req) => {
 
   // ── Agent/Seller path: verify ownership ─────────────────────────────────────
   const property = media.property;
+  if (!user) throw new ApiError('Authentication required.', 401, 'UNAUTHENTICATED');
   if (user.role !== 'ADMIN' && property.owner_id !== user.id) {
     // Check agency membership
     if (property.agency_id) {

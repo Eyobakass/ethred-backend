@@ -432,7 +432,7 @@ const reorderTourScenes = async (propertyId, user, sceneOrder) => {
   const updates = await prisma.$transaction(
     sceneOrder.map(({ scene_id, sort_order }) =>
       prisma.propertyMedia.update({
-        where: { id: scene_id, property_id: cleanId },
+        where: { id: scene_id },
         data: { sort_order: parseInt(sort_order) },
       })
     )
