@@ -76,8 +76,14 @@ app.post('/doc-auth', handleDocAuthSubmit);
 app.get('/ETHRED_MANUAL.html', handleProtectedDoc('ETHRED_MANUAL.html'));
 app.get('/ETHRED_SPECIFICATION.html', handleProtectedDoc('ETHRED_SPECIFICATION.html'));
 
-// ── Static Files (local upload storage) ─────────────────────────────────────
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+// ── Static Files (local upload storage with CORS for WebGL panoramas) ───────
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
+  setHeaders: (res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.set('Cache-Control', 'public, max-age=31536000');
+  },
+}));
 app.use(express.static(path.join(process.cwd(), 'public'))); // serve index.html at root
 
 // ── Passport ─────────────────────────────────────────────────────────────────
