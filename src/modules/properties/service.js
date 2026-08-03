@@ -334,6 +334,7 @@ const getTourConfig = async (propertyId) => {
             // Filter out orphaned NAVIGATION hotspots (target deleted)
             .filter((h) => h.type !== 'NAVIGATION' || h.target_scene_id !== null)
             .map((h) => ({
+              id: h.id,
               pitch: h.pitch,
               yaw: h.yaw,
               type: h.type === 'NAVIGATION' ? 'scene' : 'info',
