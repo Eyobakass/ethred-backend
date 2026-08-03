@@ -255,6 +255,27 @@ const deleteMedia = async (propertyId, mediaId, user) => {
   await prisma.propertyMedia.delete({ where: { id: cleanMediaId } });
 };
 
+const updateMedia = async (propertyId, mediaId, user, data) => {
+  const cleanId = sanitizeId(propertyId);
+  const cleanMediaId = sanitizeId(mediaId);
+  const property = await prisma.property.findUnique({ where: { id: cleanId } });
+  if (!property) throw new ApiError('Property not found.', 404, 'PROPERTY_NOT_FOUND');
+  ensureOwnerOrAdmin(property, user);
+
+  const media = await prisma.propertyMedia.findUnique({ where: { id: cleanMediaId } });
+  if (!media || media.property_id !== cleanId) {
+    throw new ApiError('Media record not found.', 404, 'MEDIA_NOT_FOUND');
+  }
+
+  const updated = await prisma.propertyMedia.update({
+    where: { id: cleanMediaId },
+    data: {
+      scene_name: data.scene_name !== undefined ? data.scene_name : media.scene_name,
+    },
+  });
+  return updated;
+};
+
 const getMyListings = async (user, query) => {
   const { page = '1', limit = '20', status } = query;
   const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -450,7 +471,7 @@ const reorderTourScenes = async (propertyId, user, sceneOrder) => {
 
 module.exports = {
   searchProperties, getProperty, createProperty, updateProperty, deleteProperty,
-  submitForReview, attachMedia, deleteMedia, getMyListings, getListingStats,
+  submitForReview, attachMedia, deleteMedia, updateMedia, getMyListings, getListingStats,
   // Tour
   getTourConfig, uploadTourScene, reorderTourScenes, uploadFloorPlan,
 };

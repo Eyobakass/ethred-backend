@@ -64,6 +64,13 @@ const deleteMedia = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+const updateMedia = async (req, res, next) => {
+  try {
+    const media = await PropertyService.updateMedia(req.params.id, req.params.mediaId, req.user, req.body);
+    res.json({ success: true, data: media });
+  } catch (err) { next(err); }
+};
+
 const getMyListings = async (req, res, next) => {
   try {
     const result = await PropertyService.getMyListings(req.user, req.query);

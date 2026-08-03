@@ -67,6 +67,12 @@ router.delete('/:id/media/:mediaId',
   controller.deleteMedia
 );
 
+// Update a media item (e.g., scene_name)
+router.patch('/:id/media/:mediaId',
+  authorize('SELLER', 'AGENCY_ADMIN', 'AGENCY_AGENT', 'ADMIN'),
+  controller.updateMedia
+);
+
 // Get seller's own listings
 router.get('/', authorize('SELLER', 'AGENCY_ADMIN', 'AGENCY_AGENT', 'ADMIN'), controller.getMyListings);
 
