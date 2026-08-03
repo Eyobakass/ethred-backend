@@ -152,7 +152,7 @@ const uploadFloorPlan = async (req, res, next) => {
 
 module.exports = {
   searchProperties, getProperty, createProperty, updateProperty, deleteProperty,
-  submitForReview, uploadImages, uploadDocument, deleteMedia, getMyListings, getListingStats,
+  submitForReview, uploadImages, uploadDocument, deleteMedia, updateMedia, getMyListings, getListingStats,
   // Tour
   getTourConfig, uploadTourScene, reorderTourScenes, uploadFloorPlan,
 };
