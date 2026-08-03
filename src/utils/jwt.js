@@ -26,7 +26,7 @@ const setCookieToken = (res, token) => {
   res.cookie(COOKIE_NAME, token, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: isProduction ? 'strict' : 'lax',
+    sameSite: isProduction ? 'none' : 'lax', // Must be 'none' for cross-domain API cookies
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 };
