@@ -76,4 +76,15 @@ const updateNotificationPrefs = async (userId, body) => {
   return prefs;
 };
 
-module.exports = { getProfile, updateProfile, updateAvatar, saveIdDocument, updateNotificationPrefs };
+const deleteAccount = async (userId) => {
+  // Check if user is an agency admin. If so, they must transfer or delete the agency first.
+  const agencyAdmin = await prisma.agency.findFirst({ where: { admin_id: userId } });
+  if (agencyAdmin) {
+    throw new ApiError('You are the admin of an agency. Please contact support to delete your account or transfer ownership first.', 400);
+  }
+
+  // Hard delete: Prisma will cascade delete Profile, Properties, Favorites, etc., based on schema constraints.
+  await prisma.user.delete({ where: { id: userId } });
+};
+
+module.exports = { getProfile, updateProfile, updateAvatar, saveIdDocument, updateNotificationPrefs, deleteAccount };

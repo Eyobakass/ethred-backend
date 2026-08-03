@@ -38,4 +38,14 @@ const updateNotificationPrefs = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { getProfile, updateProfile, updateAvatar, uploadIdDocument, updateNotificationPrefs };
+const { clearCookieToken } = require('../../utils/jwt');
+
+const deleteAccount = async (req, res, next) => {
+  try {
+    await UserService.deleteAccount(req.user.id);
+    clearCookieToken(res);
+    res.json({ success: true, message: 'Account permanently deleted.' });
+  } catch (err) { next(err); }
+};
+
+module.exports = { getProfile, updateProfile, updateAvatar, uploadIdDocument, updateNotificationPrefs, deleteAccount };

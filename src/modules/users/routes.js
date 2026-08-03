@@ -8,6 +8,7 @@ router.use(authenticate);
 
 router.get('/me', controller.getProfile);
 router.put('/me', controller.updateProfile);
+router.delete('/me', controller.deleteAccount);
 
 // Avatar upload
 router.post('/me/avatar',

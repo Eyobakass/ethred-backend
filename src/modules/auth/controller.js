@@ -86,4 +86,11 @@ const getMe = (req, res) => {
   res.json({ success: true, user: req.user });
 };
 
-module.exports = { register, login, logout, sendOTP, verifyOTP, forgotPassword, resetPassword, googleCallback, refreshToken, getMe };
+const changePassword = async (req, res, next) => {
+  try {
+    await AuthService.changePassword(req.user.id, req.body);
+    res.json({ success: true, message: 'Password changed successfully.' });
+  } catch (err) { next(err); }
+};
+
+module.exports = { register, login, logout, sendOTP, verifyOTP, forgotPassword, resetPassword, googleCallback, refreshToken, getMe, changePassword };

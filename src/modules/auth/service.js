@@ -173,6 +173,35 @@ const refreshToken = async (req) => {
   return { user, token: newToken };
 };
 
+const changePassword = async (userId, body) => {
+  const { current_password, new_password } = z
+    .object({
+      current_password: z.string().min(1),
+      new_password: z.string().min(8),
+    })
+    .parse(body);
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new ApiError('User not found.', 404);
+  if (user.password_hash === 'GOOGLE_OAUTH' || user.password_hash === 'OTP_AUTH') {
+    throw new ApiError('This account does not use a password. Please sign in with your provider.', 400);
+  }
+
+  const match = await comparePassword(current_password, user.password_hash);
+  if (!match) throw new ApiError('Incorrect current password.', 401);
+
+  const passwordError = validatePasswordStrength(new_password);
+  if (passwordError) throw new ApiError(passwordError, 400);
+
+  const password_hash = await hashPassword(new_password);
+  await prisma.user.update({ where: { id: userId }, data: { password_hash } });
+
+  // Audit log
+  await prisma.auditLog.create({
+    data: { actor_id: userId, action: 'PASSWORD_CHANGED', target_table: 'users', target_id: userId },
+  });
+};
+
 module.exports = {
   registerWithEmail,
   loginWithEmail,
@@ -181,4 +210,5 @@ module.exports = {
   sendPasswordResetEmail,
   resetPassword,
   refreshToken,
+  changePassword,
 };

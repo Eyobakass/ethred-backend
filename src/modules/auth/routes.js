@@ -14,9 +14,10 @@ router.post('/logout', authenticate, controller.logout);
 router.post('/send-otp', authLimiter, controller.sendOTP);
 router.post('/verify-otp', authLimiter, controller.verifyOTP);
 
-// ── Password Reset ────────────────────────────────────────────────────────────
+// ── Password Reset & Change ───────────────────────────────────────────────────
 router.post('/forgot-password', authLimiter, controller.forgotPassword);
 router.post('/reset-password', authLimiter, controller.resetPassword);
+router.put('/change-password', authenticate, authLimiter, controller.changePassword);
 
 // ── Google OAuth ──────────────────────────────────────────────────────────────
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'], session: false }));
