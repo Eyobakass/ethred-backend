@@ -14,6 +14,7 @@ const registerSchema = z.object({
   password: z.string().min(8),
   full_name: z.string().min(2).max(150),
   preferred_language: z.enum(['en', 'am']).optional().default('en'),
+  role: z.enum(['BUYER', 'SELLER', 'AGENCY_ADMIN']).optional().default('BUYER'),
 });
 
 const loginSchema = z.object({
@@ -33,7 +34,7 @@ const verifyOTPSchema = z.object({
 // ── Service Methods ────────────────────────────────────────────────────────────
 
 const registerWithEmail = async (body) => {
-  const { email, password, full_name, preferred_language } = registerSchema.parse(body);
+  const { email, password, full_name, preferred_language, role } = registerSchema.parse(body);
 
   const passwordError = validatePasswordStrength(password);
   if (passwordError) throw new ApiError(passwordError, 400);
@@ -48,7 +49,7 @@ const registerWithEmail = async (body) => {
       email,
       phone_number: `email_${Date.now()}`, // placeholder — updated when user adds phone
       password_hash,
-      role: 'BUYER',
+      role: role,
       profile: {
         create: { full_name, preferred_language },
       },
