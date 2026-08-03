@@ -94,8 +94,15 @@ const getListingStats = async (req, res, next) => {
 const getTourConfig = async (req, res, next) => {
   try {
     const config = await PropertyService.getTourConfig(req.params.id);
-    // Cache for 5 minutes on CDN, 60s on edge
-    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=60');
+    
+    // Only cache if it's a public request (no cache buster)
+    if (!req.query.t && !req.query.noCache) {
+      // Cache for 5 minutes on CDN, 60s on edge
+      res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=60');
+    } else {
+      res.setHeader('Cache-Control', 'no-store, max-age=0');
+    }
+    
     res.json(config);
   } catch (err) { next(err); }
 };
