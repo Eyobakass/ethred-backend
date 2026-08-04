@@ -287,7 +287,30 @@ const getMyListings = async (user, query) => {
     prisma.property.findMany({ where, skip, take, orderBy: { created_at: 'desc' } }),
   ]);
 
-  return { count, page: parseInt(page), limit: take, results };
+  const resultsWithRejection = await Promise.all(
+    results.map(async (p) => {
+      if (p.status === 'DRAFT') {
+        const rejectionLog = await prisma.auditLog.findFirst({
+          where: { target_table: 'properties', target_id: p.id, action: 'PROPERTY_REJECTED' },
+          orderBy: { created_at: 'desc' },
+          include: { actor: { select: { email: true, profile: { select: { full_name: true } } } } },
+        });
+        if (rejectionLog) {
+          return {
+            ...p,
+            rejection_info: {
+              reason: rejectionLog.new_values?.reason || 'No specific reason provided.',
+              rejected_at: rejectionLog.created_at,
+              rejected_by: rejectionLog.actor?.profile?.full_name || rejectionLog.actor?.email || 'Platform Admin',
+            },
+          };
+        }
+      }
+      return p;
+    })
+  );
+
+  return { count, page: parseInt(page), limit: take, results: resultsWithRejection };
 };
 
 const getListingStats = async (propertyId, user) => {
