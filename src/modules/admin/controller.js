@@ -51,9 +51,9 @@ const approveProperty = async (req, res, next) => {
 
     await audit(req.user.id, 'PROPERTY_APPROVED', 'properties', req.params.id);
 
-    // Notify seller (SRS REQ-COMM-03)
+    // Notify seller asynchronously (don't block API response if SMTP fails/times out)
     if (property.owner?.email) {
-      await sendEmail({
+      sendEmail({
         to: property.owner.email,
         subject: `Your listing "${property.title_en}" is now live — Ethred`,
         html: `
@@ -92,7 +92,7 @@ const suspendProperty = async (req, res, next) => {
     await audit(req.user.id, 'PROPERTY_SUSPENDED', 'properties', req.params.id, { reason });
 
     if (property.owner?.email) {
-      await sendEmail({
+      sendEmail({
         to: property.owner.email,
         subject: `Your Ethred listing has been suspended`,
         html: `
@@ -128,7 +128,7 @@ const rejectProperty = async (req, res, next) => {
     await audit(req.user.id, 'PROPERTY_REJECTED', 'properties', req.params.id, { reason });
 
     if (property.owner?.email) {
-      await sendEmail({
+      sendEmail({
         to: property.owner.email,
         subject: `Action required: Ethred listing needs revision`,
         html: `
