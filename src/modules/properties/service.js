@@ -94,7 +94,7 @@ const searchProperties = async (query) => {
         area_sqm: true,
         status: true,
         created_at: true,
-        media: { where: { sort_order: 0 }, take: 1, select: { file_url: true } },
+        media: { take: 5, orderBy: { sort_order: 'asc' }, select: { file_url: true, media_category: true, is_tour_scene: true } },
         owner: { select: { id: true, email: true, profile: { select: { full_name: true, avatar_url: true } } } },
       },
     }),
