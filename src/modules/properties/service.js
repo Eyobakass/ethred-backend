@@ -103,8 +103,8 @@ const searchProperties = async (query) => {
   // Shape the response to match SRS Section 4.2
   const shaped = results.map((p) => ({
     ...p,
-    thumbnail_url: p.media[0]?.file_url || null,
-    media: undefined,
+    thumbnail_url: p.media?.[0]?.file_url || null,
+    // Keep p.media so frontend components can access full media array
   }));
 
   return { count, page: parseInt(page), limit: take, results: shaped };
