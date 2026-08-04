@@ -216,6 +216,20 @@ const submitForReview = async (propertyId, user) => {
     throw new ApiError(`Cannot submit. Current status: ${property.status}`, 400);
   }
 
+  // Anti-Spam Guard: Check if listing was previously rejected and hasn't been edited since
+  const rejectionLog = await prisma.auditLog.findFirst({
+    where: { target_table: 'properties', target_id: cleanId, action: 'PROPERTY_REJECTED' },
+    orderBy: { created_at: 'desc' },
+  });
+
+  if (rejectionLog && new Date(property.updated_at) <= new Date(rejectionLog.created_at)) {
+    throw new ApiError(
+      'You must make revisions to your property details, photos, or 3D tour based on admin feedback before resubmitting for review.',
+      400,
+      'REVISION_REQUIRED'
+    );
+  }
+
   return prisma.property.update({
     where: { id: cleanId },
     data: { status: 'PENDING', updated_at: new Date() },
@@ -237,7 +251,9 @@ const attachMedia = async (propertyId, user, files, mediaType) => {
     sort_order: currentCount + i,
   }));
 
-  return prisma.propertyMedia.createMany({ data: mediaRecords });
+  const created = await prisma.propertyMedia.createMany({ data: mediaRecords });
+  await prisma.property.update({ where: { id: cleanId }, data: { updated_at: new Date() } });
+  return created;
 };
 
 const deleteMedia = async (propertyId, mediaId, user) => {
@@ -253,6 +269,7 @@ const deleteMedia = async (propertyId, mediaId, user) => {
   }
 
   await prisma.propertyMedia.delete({ where: { id: cleanMediaId } });
+  await prisma.property.update({ where: { id: cleanId }, data: { updated_at: new Date() } });
 };
 
 const updateMedia = async (propertyId, mediaId, user, data) => {
