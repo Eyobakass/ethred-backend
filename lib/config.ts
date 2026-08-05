@@ -2,7 +2,8 @@
 // NEXT_PUBLIC_API_URL is the API *origin* (no /api/v1). The prefix is appended by the client.
 
 const rawApiUrl =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:5000"
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
+  "https://ethred-backend.onrender.com"
 
 const apiPrefix = process.env.NEXT_PUBLIC_API_PREFIX || "/api/v1"
 
