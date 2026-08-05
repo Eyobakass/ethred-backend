@@ -1,8 +1,0 @@
-opencv-python>=4.8.0
-scikit-image>=0.22.0
-requests>=2.31.0
-numpy>=1.25.0
-
-# Optional: IOPaint/LaMa for severe artifact inpainting
-# Uncomment to enable (requires ~4GB GPU or slow CPU inference):
-# iopaint>=1.3.0
