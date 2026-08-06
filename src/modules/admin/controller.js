@@ -3,6 +3,7 @@ const { prisma } = require('../../config/db');
 const { ApiError } = require('../../middleware/errorHandler');
 const { sendEmail } = require('../../config/mailer');
 const logger = require('../../utils/logger');
+const PropertyService = require('../properties/service');
 
 // ── Helper: create audit log entry ───────────────────────────────────────────
 const audit = (actorId, action, targetTable, targetId, newValues = {}) =>
@@ -19,9 +20,9 @@ const getPendingProperties = async (req, res, next) => {
     const take = Math.min(parseInt(limit), 50);
 
     const [count, results] = await Promise.all([
-      prisma.property.count({ where: { status: 'PENDING' } }),
+      prisma.property.count({ where: { status: { in: ['PENDING', 'PENDING_UPDATE'] } } }),
       prisma.property.findMany({
-        where: { status: 'PENDING' },
+        where: { status: { in: ['PENDING', 'PENDING_UPDATE'] } },
         skip, take,
         orderBy: { created_at: 'asc' },
         include: {
@@ -42,14 +43,25 @@ const approveProperty = async (req, res, next) => {
       include: { owner: { select: { email: true } } },
     });
     if (!property) throw new ApiError('Property not found.', 404);
-    if (property.status !== 'PENDING') throw new ApiError('Property is not in PENDING state.', 400);
+    if (!['PENDING', 'PENDING_UPDATE'].includes(property.status)) {
+      throw new ApiError('Property is not in PENDING or PENDING_UPDATE state.', 400);
+    }
 
-    const updated = await prisma.property.update({
-      where: { id: req.params.id },
-      data: { status: 'APPROVED', updated_at: new Date() },
-    });
+    let targetId = req.params.id;
+    let updated;
 
-    await audit(req.user.id, 'PROPERTY_APPROVED', 'properties', req.params.id);
+    if (property.status === 'PENDING_UPDATE' && property.parent_id) {
+      await PropertyService.applyDraftToOriginal(property.id);
+      targetId = property.parent_id;
+      updated = await prisma.property.findUnique({ where: { id: targetId } });
+    } else {
+      updated = await prisma.property.update({
+        where: { id: req.params.id },
+        data: { status: 'APPROVED', updated_at: new Date() },
+      });
+    }
+
+    await audit(req.user.id, 'PROPERTY_APPROVED', 'properties', targetId);
 
     // Notify seller asynchronously (don't block API response if SMTP fails/times out)
     if (property.owner?.email) {

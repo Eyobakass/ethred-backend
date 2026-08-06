@@ -42,6 +42,13 @@ const submitForReview = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+const createDraftClone = async (req, res, next) => {
+  try {
+    const draft = await PropertyService.createDraftClone(req.params.id, req.user);
+    res.json({ success: true, data: draft });
+  } catch (err) { next(err); }
+};
+
 const uploadImages = async (req, res, next) => {
   try {
     const media = await PropertyService.attachMedia(req.params.id, req.user, req.processedFiles || [], 'IMAGE');
@@ -159,7 +166,8 @@ const uploadFloorPlan = async (req, res, next) => {
 
 module.exports = {
   searchProperties, getProperty, createProperty, updateProperty, deleteProperty,
-  submitForReview, uploadImages, uploadDocument, deleteMedia, updateMedia, getMyListings, getListingStats,
+  submitForReview, createDraftClone, uploadImages, uploadDocument, deleteMedia, updateMedia,
+  getMyListings, getListingStats,
   // Tour
   getTourConfig, uploadTourScene, reorderTourScenes, uploadFloorPlan,
 };

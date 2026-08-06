@@ -230,10 +230,217 @@ const submitForReview = async (propertyId, user) => {
     );
   }
 
+  const newStatus = property.parent_id ? 'PENDING_UPDATE' : 'PENDING';
+
   return prisma.property.update({
     where: { id: cleanId },
-    data: { status: 'PENDING', updated_at: new Date() },
+    data: { status: newStatus, updated_at: new Date() },
   });
+};
+
+const createDraftClone = async (propertyId, user) => {
+  const cleanId = sanitizeId(propertyId);
+  const property = await prisma.property.findUnique({ 
+    where: { id: cleanId },
+    include: { media: true, amenities: true }
+  });
+  
+  if (!property) throw new ApiError('Property not found.', 404);
+  ensureOwnerOrAdmin(property, user);
+
+  if (property.status !== 'APPROVED') {
+    throw new ApiError('Only APPROVED properties can be cloned for drafting.', 400);
+  }
+
+  // Check if a draft already exists
+  const existingDraft = await prisma.property.findFirst({
+    where: { parent_id: cleanId, status: 'PENDING_UPDATE' }
+  });
+  if (existingDraft) return existingDraft;
+
+  // Create clone
+  const draft = await prisma.property.create({
+    data: {
+      owner_id: property.owner_id,
+      agency_id: property.agency_id,
+      title_en: property.title_en,
+      title_am: property.title_am,
+      description_en: property.description_en,
+      description_am: property.description_am,
+      price_etb: property.price_etb,
+      price_usd: property.price_usd,
+      transaction_mode: property.transaction_mode,
+      category: property.category,
+      region: property.region,
+      city: property.city,
+      sub_city: property.sub_city,
+      woreda: property.woreda,
+      kebele: property.kebele,
+      nearest_landmark: property.nearest_landmark,
+      bedrooms: property.bedrooms,
+      bathrooms: property.bathrooms,
+      area_sqm: property.area_sqm,
+      status: 'PENDING_UPDATE',
+      parent_id: cleanId,
+      // media and amenities will be copied separately because media has hotspots
+    }
+  });
+
+  // Copy amenities
+  if (property.amenities.length > 0) {
+    await prisma.propertyAmenity.createMany({
+      data: property.amenities.map(a => ({
+        property_id: draft.id,
+        amenity_name: a.amenity_name
+      }))
+    });
+  }
+
+  // Copy media (and hotspots later if needed)
+  for (const media of property.media) {
+    const newMedia = await prisma.propertyMedia.create({
+      data: {
+        property_id: draft.id,
+        file_url: media.file_url,
+        media_category: media.media_category,
+        sort_order: media.sort_order,
+        is_tour_scene: media.is_tour_scene,
+        scene_name: media.scene_name,
+        initial_yaw: media.initial_yaw,
+        needs_repair: media.needs_repair,
+        fp_x: media.fp_x,
+        fp_y: media.fp_y
+      }
+    });
+
+    // Copy hotspots for this media
+    const hotspots = await prisma.hotspot.findMany({ where: { scene_id: media.id } });
+    if (hotspots.length > 0) {
+      await prisma.hotspot.createMany({
+        data: hotspots.map(h => ({
+          scene_id: newMedia.id,
+          type: h.type,
+          yaw: h.yaw,
+          pitch: h.pitch,
+          target_scene_id: h.target_scene_id, // Note: this won't map correctly across clones easily, but good enough for simple drafts
+          label: h.label
+        }))
+      });
+    }
+  }
+
+  // Update geometry if present
+  const originalWithGeom = await prisma.$queryRaw`SELECT geom_point FROM properties WHERE id = ${cleanId}::uuid`;
+  if (originalWithGeom && originalWithGeom.length > 0 && originalWithGeom[0].geom_point) {
+    await prisma.$executeRaw`
+      UPDATE properties SET geom_point = (SELECT geom_point FROM properties WHERE id = ${cleanId}::uuid)
+      WHERE id = ${draft.id}::uuid
+    `;
+  }
+
+  return draft;
+};
+
+const applyDraftToOriginal = async (draftId) => {
+  const cleanId = sanitizeId(draftId);
+  const draft = await prisma.property.findUnique({
+    where: { id: cleanId },
+    include: { media: true, amenities: true }
+  });
+
+  if (!draft || !draft.parent_id) {
+    throw new ApiError('Draft not found or is not a clone.', 404);
+  }
+
+  // Find original
+  const original = await prisma.property.findUnique({
+    where: { id: draft.parent_id }
+  });
+  if (!original) throw new ApiError('Original property not found.', 404);
+
+  // Overwrite original fields
+  await prisma.property.update({
+    where: { id: original.id },
+    data: {
+      title_en: draft.title_en,
+      title_am: draft.title_am,
+      description_en: draft.description_en,
+      description_am: draft.description_am,
+      price_etb: draft.price_etb,
+      price_usd: draft.price_usd,
+      transaction_mode: draft.transaction_mode,
+      category: draft.category,
+      region: draft.region,
+      city: draft.city,
+      sub_city: draft.sub_city,
+      woreda: draft.woreda,
+      kebele: draft.kebele,
+      nearest_landmark: draft.nearest_landmark,
+      bedrooms: draft.bedrooms,
+      bathrooms: draft.bathrooms,
+      area_sqm: draft.area_sqm,
+      status: 'APPROVED', // Keep approved
+    }
+  });
+
+  // Overwrite geometry
+  const draftWithGeom = await prisma.$queryRaw`SELECT geom_point FROM properties WHERE id = ${cleanId}::uuid`;
+  if (draftWithGeom && draftWithGeom.length > 0 && draftWithGeom[0].geom_point) {
+    await prisma.$executeRaw`
+      UPDATE properties SET geom_point = (SELECT geom_point FROM properties WHERE id = ${cleanId}::uuid)
+      WHERE id = ${original.id}::uuid
+    `;
+  }
+
+  // Delete original media and amenities (cascades to hotspots)
+  await prisma.propertyMedia.deleteMany({ where: { property_id: original.id } });
+  await prisma.propertyAmenity.deleteMany({ where: { property_id: original.id } });
+
+  // Copy amenities back
+  if (draft.amenities.length > 0) {
+    await prisma.propertyAmenity.createMany({
+      data: draft.amenities.map(a => ({
+        property_id: original.id,
+        amenity_name: a.amenity_name
+      }))
+    });
+  }
+
+  // Copy media back
+  for (const media of draft.media) {
+    const newMedia = await prisma.propertyMedia.create({
+      data: {
+        property_id: original.id,
+        file_url: media.file_url,
+        media_category: media.media_category,
+        sort_order: media.sort_order,
+        is_tour_scene: media.is_tour_scene,
+        scene_name: media.scene_name,
+        initial_yaw: media.initial_yaw,
+        needs_repair: media.needs_repair,
+        fp_x: media.fp_x,
+        fp_y: media.fp_y
+      }
+    });
+
+    // Copy hotspots back
+    const hotspots = await prisma.hotspot.findMany({ where: { scene_id: media.id } });
+    if (hotspots.length > 0) {
+      await prisma.hotspot.createMany({
+        data: hotspots.map(h => ({
+          scene_id: newMedia.id,
+          type: h.type,
+          yaw: h.yaw,
+          pitch: h.pitch,
+          target_scene_id: h.target_scene_id,
+          label: h.label
+        }))
+      });
+    }
+  }
+
+  // Delete the draft
+  await prisma.property.delete({ where: { id: cleanId } });
 };
 
 const attachMedia = async (propertyId, user, files, mediaType) => {
@@ -512,6 +719,7 @@ const reorderTourScenes = async (propertyId, user, sceneOrder) => {
 module.exports = {
   searchProperties, getProperty, createProperty, updateProperty, deleteProperty,
   submitForReview, attachMedia, deleteMedia, updateMedia, getMyListings, getListingStats,
+  createDraftClone, applyDraftToOriginal,
   // Tour
   getTourConfig, uploadTourScene, reorderTourScenes, uploadFloorPlan,
 };

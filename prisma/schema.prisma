@@ -28,6 +28,7 @@ enum UserRole {
 enum PropertyStatus {
   DRAFT
   PENDING
+  PENDING_UPDATE
   APPROVED
   SUSPENDED
   ARCHIVED
@@ -195,6 +196,10 @@ model Property {
   amenities        PropertyAmenity[]
   inquiries        PropertyInquiry[]
   favorites        UserFavorite[]
+
+  parent_id        String?            @db.Uuid
+  parent           Property?          @relation("PropertyDrafts", fields: [parent_id], references: [id])
+  drafts           Property[]         @relation("PropertyDrafts")
 
   @@index([status])
   @@index([region, sub_city, city])

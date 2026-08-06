@@ -44,6 +44,12 @@ router.post('/:id/submit',
   controller.submitForReview
 );
 
+// Create a draft clone of an APPROVED property
+router.post('/:id/draft',
+  authorize('SELLER', 'AGENCY_ADMIN', 'AGENCY_AGENT', 'ADMIN'),
+  controller.createDraftClone
+);
+
 // Upload property images (SRS REQ-PROP-01)
 router.post('/:id/media/images',
   authorize('SELLER', 'AGENCY_ADMIN', 'AGENCY_AGENT', 'ADMIN'),
