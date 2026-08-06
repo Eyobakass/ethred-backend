@@ -209,11 +209,19 @@ const deleteProperty = async (propertyId, user) => {
   if (!property) throw new ApiError('Property not found.', 404);
   ensureOwnerOrAdmin(property, user);
 
-  await prisma.property.update({ where: { id: cleanId }, data: { status: 'ARCHIVED' } });
-
-  await prisma.auditLog.create({
-    data: { actor_id: user.id, action: 'PROPERTY_ARCHIVED', target_table: 'properties', target_id: cleanId },
-  });
+  if (['DRAFT', 'PENDING_UPDATE', 'ARCHIVED'].includes(property.status)) {
+    // Hard delete for drafts, pending updates, or properties that are already archived
+    await prisma.property.delete({ where: { id: cleanId } });
+    await prisma.auditLog.create({
+      data: { actor_id: user.id, action: 'PROPERTY_DELETED', target_table: 'properties', target_id: cleanId },
+    });
+  } else {
+    // Soft delete (archive) for approved or pending live properties
+    await prisma.property.update({ where: { id: cleanId }, data: { status: 'ARCHIVED' } });
+    await prisma.auditLog.create({
+      data: { actor_id: user.id, action: 'PROPERTY_ARCHIVED', target_table: 'properties', target_id: cleanId },
+    });
+  }
 };
 
 /**
