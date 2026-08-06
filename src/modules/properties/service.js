@@ -329,14 +329,11 @@ const createDraftClone = async (propertyId, user) => {
     }
   }
 
-  // Update geometry if present
-  const originalWithGeom = await prisma.$queryRaw`SELECT geom_point FROM properties WHERE id = ${cleanId}::uuid`;
-  if (originalWithGeom && originalWithGeom.length > 0 && originalWithGeom[0].geom_point) {
-    await prisma.$executeRaw`
-      UPDATE properties SET geom_point = (SELECT geom_point FROM properties WHERE id = ${cleanId}::uuid)
-      WHERE id = ${draft.id}::uuid
-    `;
-  }
+  // Update geometry unconditionally (copies NULL if it doesn't exist)
+  await prisma.$executeRaw`
+    UPDATE properties SET geom_point = (SELECT geom_point FROM properties WHERE id = ${cleanId}::uuid)
+    WHERE id = ${draft.id}::uuid
+  `;
 
   return draft;
 };
@@ -384,13 +381,10 @@ const applyDraftToOriginal = async (draftId) => {
   });
 
   // Overwrite geometry
-  const draftWithGeom = await prisma.$queryRaw`SELECT geom_point FROM properties WHERE id = ${cleanId}::uuid`;
-  if (draftWithGeom && draftWithGeom.length > 0 && draftWithGeom[0].geom_point) {
-    await prisma.$executeRaw`
-      UPDATE properties SET geom_point = (SELECT geom_point FROM properties WHERE id = ${cleanId}::uuid)
-      WHERE id = ${original.id}::uuid
-    `;
-  }
+  await prisma.$executeRaw`
+    UPDATE properties SET geom_point = (SELECT geom_point FROM properties WHERE id = ${cleanId}::uuid)
+    WHERE id = ${original.id}::uuid
+  `;
 
   // Delete original media and amenities (cascades to hotspots)
   await prisma.propertyMedia.deleteMany({ where: { property_id: original.id } });
