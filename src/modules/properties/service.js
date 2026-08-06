@@ -535,7 +535,8 @@ const getMyListings = async (user, query) => {
   const skip = (parseInt(page) - 1) * parseInt(limit);
   const take = Math.min(parseInt(limit), 50);
 
-  const where = { owner_id: user.id, ...(status && { status }) };
+  // parent_id: null ensures that draft clones are completely hidden from the main dashboard
+  const where = { owner_id: user.id, parent_id: null, ...(status && { status }) };
   const [count, results] = await Promise.all([
     prisma.property.count({ where }),
     prisma.property.findMany({ where, skip, take, orderBy: { created_at: 'desc' } }),
