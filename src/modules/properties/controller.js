@@ -49,16 +49,27 @@ const createDraftClone = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// Returns the existing active draft for an APPROVED property (if any)
+// Returns the existing active draft for an APPROVED property (if any).
+// Auto-heals: if multiple drafts exist (shouldn't happen after the unique index),
+// it keeps only the most recently updated one and deletes the rest.
 const getExistingDraft = async (req, res, next) => {
   try {
     const { prisma } = require('../../config/db');
     const cleanId = req.params.id.replace(/['"]/g, '').trim();
-    const draft = await prisma.property.findFirst({
+    const drafts = await prisma.property.findMany({
       where: { parent_id: cleanId, status: { in: ['DRAFT', 'PENDING_UPDATE'] } },
       orderBy: { updated_at: 'desc' },
     });
-    res.json({ success: true, data: draft || null });
+    if (drafts.length === 0) {
+      return res.json({ success: true, data: null });
+    }
+    if (drafts.length > 1) {
+      // Dedup: keep the most recently updated, delete the rest
+      const [keep, ...stale] = drafts;
+      await prisma.property.deleteMany({ where: { id: { in: stale.map(d => d.id) } } });
+      return res.json({ success: true, data: keep });
+    }
+    res.json({ success: true, data: drafts[0] });
   } catch (err) { next(err); }
 };
 
