@@ -171,8 +171,21 @@ const updateProperty = async (propertyId, user, body) => {
   if (!property) throw new ApiError('Property not found.', 404);
   ensureOwnerOrAdmin(property, user);
 
+  // APPROVED properties cannot be edited directly — they must go through the draft/clone system.
+  // Only allow editing properties that are in a mutable state.
+  const mutableStatuses = ['DRAFT', 'PENDING_UPDATE'];
+  if (!mutableStatuses.includes(property.status) && user.role !== 'ADMIN') {
+    throw new ApiError(
+      `Cannot edit a property with status "${property.status}" directly. Use the draft system.`,
+      400
+    );
+  }
+
   const schema = propertySchema.partial();
   const { amenities, latitude, longitude, ...data } = schema.parse(body);
+
+  // Strip any status field from seller-submitted body to prevent manipulation
+  delete data.status;
 
   const updated = await prisma.property.update({
     where: { id: cleanId },
@@ -212,24 +225,28 @@ const submitForReview = async (propertyId, user) => {
   if (!property) throw new ApiError('Property not found.', 404);
   ensureOwnerOrAdmin(property, user);
 
-  if (property.status !== 'DRAFT') {
+  // Accept both DRAFT (new listing) and PENDING_UPDATE (edit draft clone) for submission
+  if (!['DRAFT', 'PENDING_UPDATE'].includes(property.status)) {
     throw new ApiError(`Cannot submit. Current status: ${property.status}`, 400);
   }
 
-  // Anti-Spam Guard: Check if listing was previously rejected and hasn't been edited since
-  const rejectionLog = await prisma.auditLog.findFirst({
-    where: { target_table: 'properties', target_id: cleanId, action: 'PROPERTY_REJECTED' },
-    orderBy: { created_at: 'desc' },
-  });
+  // Anti-Spam Guard: only apply to brand-new DRAFT listings (not edit drafts)
+  if (!property.parent_id) {
+    const rejectionLog = await prisma.auditLog.findFirst({
+      where: { target_table: 'properties', target_id: cleanId, action: 'PROPERTY_REJECTED' },
+      orderBy: { created_at: 'desc' },
+    });
 
-  if (rejectionLog && new Date(property.updated_at) <= new Date(rejectionLog.created_at)) {
-    throw new ApiError(
-      'You must make revisions to your property details, photos, or 3D tour based on admin feedback before resubmitting for review.',
-      400,
-      'REVISION_REQUIRED'
-    );
+    if (rejectionLog && new Date(property.updated_at) <= new Date(rejectionLog.created_at)) {
+      throw new ApiError(
+        'You must make revisions to your property details, photos, or 3D tour based on admin feedback before resubmitting for review.',
+        400,
+        'REVISION_REQUIRED'
+      );
+    }
   }
 
+  // Determine correct pending status based on whether this is a clone or a new listing
   const newStatus = property.parent_id ? 'PENDING_UPDATE' : 'PENDING';
 
   return prisma.property.update({
@@ -252,9 +269,10 @@ const createDraftClone = async (propertyId, user) => {
     throw new ApiError('Only APPROVED properties can be cloned for drafting.', 400);
   }
 
-  // Check if a draft already exists
+  // Check if ANY draft already exists (PENDING_UPDATE or even DRAFT if previously rejected)
+  // This prevents orphaned clones from accumulating.
   const existingDraft = await prisma.property.findFirst({
-    where: { parent_id: cleanId, status: 'PENDING_UPDATE' }
+    where: { parent_id: cleanId, status: { in: ['DRAFT', 'PENDING_UPDATE'] } }
   });
   if (existingDraft) return existingDraft;
 

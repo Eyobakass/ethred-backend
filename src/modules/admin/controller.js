@@ -132,26 +132,42 @@ const rejectProperty = async (req, res, next) => {
     });
     if (!property) throw new ApiError('Property not found.', 404);
 
-    const updated = await prisma.property.update({
-      where: { id: req.params.id },
-      data: { status: 'DRAFT', updated_at: new Date() }, // back to DRAFT so seller can fix
-    });
+    let updated;
+
+    if (property.status === 'PENDING_UPDATE' && property.parent_id) {
+      // This is a draft clone — reject by DELETING the draft so the live original is unaffected.
+      // We do NOT set status to DRAFT on the original; the original remains APPROVED and live.
+      await prisma.property.delete({ where: { id: req.params.id } });
+      updated = await prisma.property.findUnique({ where: { id: property.parent_id } });
+    } else {
+      // This is a brand-new listing — send it back to DRAFT for the seller to fix.
+      updated = await prisma.property.update({
+        where: { id: req.params.id },
+        data: { status: 'DRAFT', updated_at: new Date() },
+      });
+    }
 
     await audit(req.user.id, 'PROPERTY_REJECTED', 'properties', req.params.id, { reason });
 
     if (property.owner?.email) {
+      const isDraftClone = property.status === 'PENDING_UPDATE' && property.parent_id;
       sendEmail({
         to: property.owner.email,
-        subject: `Action required: Ethred listing needs revision`,
+        subject: isDraftClone
+          ? `Your listing update request was not approved — Ethred`
+          : `Action required: Ethred listing needs revision`,
         html: `
           <div style="font-family: Inter, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background: #121212; color: #fff; border-radius: 12px;">
-            <h2 style="color: #F9A602;">Listing Needs Revision</h2>
-            <p>Your listing <strong>${property.title_en}</strong> requires changes before it can go live.</p>
+            <h2 style="color: #F9A602;">${isDraftClone ? 'Update Request Not Approved' : 'Listing Needs Revision'}</h2>
+            <p>${isDraftClone
+              ? `Your requested update to <strong>${property.title_en}</strong> was not approved. Your original listing remains live and unchanged.`
+              : `Your listing <strong>${property.title_en}</strong> requires changes before it can go live.`
+            }</p>
             <p><strong>Feedback:</strong> ${reason}</p>
-            <a href="${process.env.FRONTEND_URL}/dashboard/listings/${property.id}/edit" 
+            ${!isDraftClone ? `<a href="${process.env.FRONTEND_URL}/dashboard/listings/${property.id}/edit" 
                style="display:inline-block; margin: 20px 0; padding: 12px 24px; background: #D4AF37; color: #121212; font-weight: 700; border-radius: 8px; text-decoration: none;">
               Edit Listing
-            </a>
+            </a>` : ''}
           </div>
         `,
       }).catch(() => {});
