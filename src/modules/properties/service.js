@@ -269,12 +269,22 @@ const createDraftClone = async (propertyId, user) => {
     throw new ApiError('Only APPROVED properties can be cloned for drafting.', 400);
   }
 
-  // Check if ANY draft already exists (PENDING_UPDATE or even DRAFT if previously rejected)
-  // This prevents orphaned clones from accumulating.
-  const existingDraft = await prisma.property.findFirst({
-    where: { parent_id: cleanId, status: { in: ['DRAFT', 'PENDING_UPDATE'] } }
+  // Find ALL existing drafts for this property (handles duplicates created before this fix)
+  const existingDrafts = await prisma.property.findMany({
+    where: { parent_id: cleanId, status: { in: ['DRAFT', 'PENDING_UPDATE'] } },
+    orderBy: { updated_at: 'desc' }, // most recently updated first
   });
-  if (existingDraft) return existingDraft;
+
+  if (existingDrafts.length > 1) {
+    // Duplicates exist — delete all but the most recent one
+    const [keep, ...stale] = existingDrafts;
+    await prisma.property.deleteMany({
+      where: { id: { in: stale.map(d => d.id) } }
+    });
+    return keep;
+  }
+
+  if (existingDrafts.length === 1) return existingDrafts[0];
 
   // Create clone
   const draft = await prisma.property.create({

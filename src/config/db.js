@@ -26,6 +26,16 @@ const connectDB = async () => {
   try {
     await prisma.$connect();
     logger.info('✅ PostgreSQL connected via Prisma');
+
+    // Enforce: at most ONE active draft per property at the database level.
+    // This partial unique index prevents race conditions where two simultaneous
+    // requests create duplicate draft clones for the same parent property.
+    await prisma.$executeRawUnsafe(`
+      CREATE UNIQUE INDEX IF NOT EXISTS unique_active_draft_per_property
+      ON properties (parent_id)
+      WHERE status IN ('DRAFT', 'PENDING_UPDATE') AND parent_id IS NOT NULL
+    `);
+    logger.info('✅ Unique draft index verified');
   } catch (err) {
     logger.error('❌ PostgreSQL connection failed:', err);
     process.exit(1);
