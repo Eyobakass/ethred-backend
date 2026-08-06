@@ -49,6 +49,19 @@ const createDraftClone = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// Returns the existing active draft for an APPROVED property (if any)
+const getExistingDraft = async (req, res, next) => {
+  try {
+    const { prisma } = require('../../config/db');
+    const cleanId = req.params.id.replace(/['"]/g, '').trim();
+    const draft = await prisma.property.findFirst({
+      where: { parent_id: cleanId, status: { in: ['DRAFT', 'PENDING_UPDATE'] } },
+      orderBy: { updated_at: 'desc' },
+    });
+    res.json({ success: true, data: draft || null });
+  } catch (err) { next(err); }
+};
+
 const uploadImages = async (req, res, next) => {
   try {
     const media = await PropertyService.attachMedia(req.params.id, req.user, req.processedFiles || [], 'IMAGE');
@@ -166,7 +179,7 @@ const uploadFloorPlan = async (req, res, next) => {
 
 module.exports = {
   searchProperties, getProperty, createProperty, updateProperty, deleteProperty,
-  submitForReview, createDraftClone, uploadImages, uploadDocument, deleteMedia, updateMedia,
+  submitForReview, createDraftClone, getExistingDraft, uploadImages, uploadDocument, deleteMedia, updateMedia,
   getMyListings, getListingStats,
   // Tour
   getTourConfig, uploadTourScene, reorderTourScenes, uploadFloorPlan,

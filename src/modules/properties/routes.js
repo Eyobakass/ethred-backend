@@ -50,6 +50,12 @@ router.post('/:id/draft',
   controller.createDraftClone
 );
 
+// Get existing active draft for an APPROVED property (returns null if none)
+router.get('/:id/draft',
+  authorize('SELLER', 'AGENCY_ADMIN', 'AGENCY_AGENT', 'ADMIN'),
+  controller.getExistingDraft
+);
+
 // Upload property images (SRS REQ-PROP-01)
 router.post('/:id/media/images',
   authorize('SELLER', 'AGENCY_ADMIN', 'AGENCY_AGENT', 'ADMIN'),
