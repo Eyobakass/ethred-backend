@@ -73,7 +73,7 @@ const approveProperty = async (req, res, next) => {
             <h2 style="color: #D4AF37;">Listing Approved ✓</h2>
             <p>Your property listing <strong>${property.title_en}</strong> has been reviewed and approved.</p>
             <p>It is now visible to all buyers on Ethred.</p>
-            <a href="${process.env.FRONTEND_URL}/properties/${property.id}" 
+            <a href="${process.env.FRONTEND_URL}/properties/${targetId}" 
                style="display:inline-block; margin: 20px 0; padding: 12px 24px; background: #D4AF37; color: #121212; font-weight: 700; border-radius: 8px; text-decoration: none;">
               View Listing
             </a>

@@ -440,89 +440,101 @@ const applyDraftToOriginal = async (draftId) => {
   });
   if (!original) throw new ApiError('Original property not found.', 404);
 
-  // Overwrite original fields
-  await prisma.property.update({
-    where: { id: original.id },
-    data: {
-      title_en: draft.title_en,
-      title_am: draft.title_am,
-      description_en: draft.description_en,
-      description_am: draft.description_am,
-      price_etb: draft.price_etb,
-      price_usd: draft.price_usd,
-      transaction_mode: draft.transaction_mode,
-      category: draft.category,
-      region: draft.region,
-      city: draft.city,
-      sub_city: draft.sub_city,
-      woreda: draft.woreda,
-      kebele: draft.kebele,
-      nearest_landmark: draft.nearest_landmark,
-      bedrooms: draft.bedrooms,
-      bathrooms: draft.bathrooms,
-      area_sqm: draft.area_sqm,
-      status: 'APPROVED', // Keep approved
+  // Pre-fetch all hotspots BEFORE the transaction (reads are safe outside)
+  const draftHotspotsByScene = new Map();
+  for (const media of draft.media) {
+    const hotspots = await prisma.hotspot.findMany({ where: { scene_id: media.id } });
+    draftHotspotsByScene.set(media.id, hotspots);
+  }
+
+  // Wrap all destructive writes in a transaction — if anything fails, 
+  // the original listing is fully rolled back and stays intact.
+  const mediaIdMap = new Map();
+  await prisma.$transaction(async (tx) => {
+    // Overwrite original scalar fields
+    await tx.property.update({
+      where: { id: original.id },
+      data: {
+        title_en: draft.title_en,
+        title_am: draft.title_am,
+        description_en: draft.description_en,
+        description_am: draft.description_am,
+        price_etb: draft.price_etb,
+        price_usd: draft.price_usd,
+        transaction_mode: draft.transaction_mode,
+        category: draft.category,
+        region: draft.region,
+        city: draft.city,
+        sub_city: draft.sub_city,
+        woreda: draft.woreda,
+        kebele: draft.kebele,
+        nearest_landmark: draft.nearest_landmark,
+        bedrooms: draft.bedrooms,
+        bathrooms: draft.bathrooms,
+        area_sqm: draft.area_sqm,
+        status: 'APPROVED',
+      }
+    });
+
+    // Delete original media and amenities (cascades to hotspots)
+    await tx.propertyMedia.deleteMany({ where: { property_id: original.id } });
+    await tx.propertyAmenity.deleteMany({ where: { property_id: original.id } });
+
+    // Copy amenities back
+    if (draft.amenities.length > 0) {
+      await tx.propertyAmenity.createMany({
+        data: draft.amenities.map(a => ({
+          property_id: original.id,
+          amenity_name: a.amenity_name
+        }))
+      });
     }
+
+    // Copy media back (Pass 1 — build ID map)
+    for (const media of draft.media) {
+      const newMedia = await tx.propertyMedia.create({
+        data: {
+          property_id: original.id,
+          file_url: media.file_url,
+          media_category: media.media_category,
+          sort_order: media.sort_order,
+          is_tour_scene: media.is_tour_scene,
+          scene_name: media.scene_name,
+          initial_yaw: media.initial_yaw,
+          needs_repair: media.needs_repair,
+          fp_x: media.fp_x,
+          fp_y: media.fp_y
+        }
+      });
+      mediaIdMap.set(media.id, newMedia.id);
+    }
+
+    // Copy hotspots (Pass 2 — rewire target_scene_id using map)
+    for (const media of draft.media) {
+      const hotspots = draftHotspotsByScene.get(media.id) || [];
+      if (hotspots.length > 0) {
+        await tx.hotspot.createMany({
+          data: hotspots.map(h => ({
+            scene_id: mediaIdMap.get(media.id),
+            type: h.type,
+            yaw: h.yaw,
+            pitch: h.pitch,
+            target_scene_id: h.target_scene_id ? (mediaIdMap.get(h.target_scene_id) || null) : null,
+            label: h.label
+          }))
+        });
+      }
+    }
+
+    // Delete the draft (cascade deletes draft media + draft hotspots)
+    await tx.property.delete({ where: { id: cleanId } });
   });
 
-  // Overwrite geometry
+  // Overwrite geometry — must run outside transaction ($executeRaw not supported inside interactive tx)
   await prisma.$executeRaw`
     UPDATE properties SET geom_point = (SELECT geom_point FROM properties WHERE id = ${cleanId}::uuid)
     WHERE id = ${original.id}::uuid
   `;
-
-  // Delete original media and amenities (cascades to hotspots)
-  await prisma.propertyMedia.deleteMany({ where: { property_id: original.id } });
-  await prisma.propertyAmenity.deleteMany({ where: { property_id: original.id } });
-
-  // Copy amenities back
-  if (draft.amenities.length > 0) {
-    await prisma.propertyAmenity.createMany({
-      data: draft.amenities.map(a => ({
-        property_id: original.id,
-        amenity_name: a.amenity_name
-      }))
-    });
-  }
-
-  // Copy media back (two-pass to maintain hotspot target_scene_id mapping)
-  const mediaIdMap = new Map();
-  for (const media of draft.media) {
-    const newMedia = await prisma.propertyMedia.create({
-      data: {
-        property_id: original.id,
-        file_url: media.file_url,
-        media_category: media.media_category,
-        sort_order: media.sort_order,
-        is_tour_scene: media.is_tour_scene,
-        scene_name: media.scene_name,
-        initial_yaw: media.initial_yaw,
-        needs_repair: media.needs_repair,
-        fp_x: media.fp_x,
-        fp_y: media.fp_y
-      }
-    });
-    mediaIdMap.set(media.id, newMedia.id);
-  }
-
-  for (const media of draft.media) {
-    const hotspots = await prisma.hotspot.findMany({ where: { scene_id: media.id } });
-    if (hotspots.length > 0) {
-      await prisma.hotspot.createMany({
-        data: hotspots.map(h => ({
-          scene_id: mediaIdMap.get(media.id),
-          type: h.type,
-          yaw: h.yaw,
-          pitch: h.pitch,
-          target_scene_id: h.target_scene_id ? (mediaIdMap.get(h.target_scene_id) || null) : null,
-          label: h.label
-        }))
-      });
-    }
-  }
-
-  // Delete the draft
-  await prisma.property.delete({ where: { id: cleanId } });
 };
 
 const attachMedia = async (propertyId, user, files, mediaType) => {
