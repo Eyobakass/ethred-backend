@@ -229,7 +229,10 @@ const deleteProperty = async (propertyId, user) => {
  */
 const submitForReview = async (propertyId, user) => {
   const cleanId = String(propertyId || '').replace(/['"]/g, '').trim();
-  const property = await prisma.property.findUnique({ where: { id: cleanId } });
+  const property = await prisma.property.findUnique({ 
+    where: { id: cleanId },
+    include: { media: true, amenities: true }
+  });
   if (!property) throw new ApiError('Property not found.', 404);
   ensureOwnerOrAdmin(property, user);
 
@@ -251,6 +254,38 @@ const submitForReview = async (propertyId, user) => {
         400,
         'REVISION_REQUIRED'
       );
+    }
+  } else {
+    // For draft clones, ensure the user actually made at least one change compared to the original
+    const original = await prisma.property.findUnique({
+      where: { id: property.parent_id },
+      include: { media: true, amenities: true }
+    });
+
+    if (original) {
+      const scalarFields = ['title_en', 'title_am', 'description_en', 'description_am', 'price_etb', 'transaction_mode', 'category', 'region', 'city', 'sub_city', 'woreda', 'kebele', 'nearest_landmark', 'bedrooms', 'bathrooms', 'area_sqm'];
+      let hasChanges = false;
+      
+      // Check scalar fields
+      for (const field of scalarFields) {
+        if (String(property[field] || '') !== String(original[field] || '')) {
+          hasChanges = true;
+          break;
+        }
+      }
+      
+      // Check relations (counts are usually sufficient for a quick dirty check)
+      if (!hasChanges && property.media.length !== original.media.length) hasChanges = true;
+      if (!hasChanges && property.amenities.length !== original.amenities.length) hasChanges = true;
+
+      // Also check if any media was replaced or renamed (by comparing updated_at or urls)
+      if (!hasChanges && property.media.some((m, i) => m.file_url !== original.media[i]?.file_url || m.scene_name !== original.media[i]?.scene_name)) {
+        hasChanges = true;
+      }
+
+      if (!hasChanges) {
+        throw new ApiError('No changes detected. You must modify the listing details, photos, or 3D tour before submitting an update.', 400);
+      }
     }
   }
 
