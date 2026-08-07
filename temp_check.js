@@ -1,0 +1,1 @@
+﻿const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function test() { const props = await prisma.propertyMedia.findMany({ where: { property_id: '2a014035-05f5-4ef3-9cbf-b5e0ff447cab' } }); console.log(JSON.stringify(props, null, 2)); } test().finally(()=>prisma.$disconnect());

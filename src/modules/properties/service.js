@@ -606,8 +606,19 @@ const getMyListings = async (user, query) => {
     prisma.property.findMany({ where, skip, take, orderBy: { created_at: 'desc' } }),
   ]);
 
-  const resultsWithRejection = await Promise.all(
+  const resultsWithDraftsAndRejections = await Promise.all(
     results.map(async (p) => {
+      // If the original property is APPROVED, check if there's an active draft pending review
+      if (p.status === 'APPROVED') {
+        const pendingDraft = await prisma.property.findFirst({
+          where: { parent_id: p.id, status: 'PENDING_UPDATE' }
+        });
+        if (pendingDraft) {
+          // Override status so the seller dashboard reflects that an update is pending
+          return { ...p, status: 'PENDING_UPDATE' };
+        }
+      }
+
       if (p.status === 'DRAFT') {
         const rejectionLog = await prisma.auditLog.findFirst({
           where: { target_table: 'properties', target_id: p.id, action: 'PROPERTY_REJECTED' },
@@ -629,7 +640,7 @@ const getMyListings = async (user, query) => {
     })
   );
 
-  return { count, page: parseInt(page), limit: take, results: resultsWithRejection };
+  return { count, page: parseInt(page), limit: take, results: resultsWithDraftsAndRejections };
 };
 
 const getListingStats = async (propertyId, user) => {
