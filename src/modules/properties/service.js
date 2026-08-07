@@ -378,7 +378,8 @@ const createDraftClone = async (propertyId, user) => {
     });
   }
 
-  // Copy media (and hotspots later if needed)
+  // Copy media (two-pass to maintain hotspot target_scene_id mapping)
+  const mediaIdMap = new Map();
   for (const media of property.media) {
     const newMedia = await prisma.propertyMedia.create({
       data: {
@@ -394,17 +395,19 @@ const createDraftClone = async (propertyId, user) => {
         fp_y: media.fp_y
       }
     });
+    mediaIdMap.set(media.id, newMedia.id);
+  }
 
-    // Copy hotspots for this media
+  for (const media of property.media) {
     const hotspots = await prisma.hotspot.findMany({ where: { scene_id: media.id } });
     if (hotspots.length > 0) {
       await prisma.hotspot.createMany({
         data: hotspots.map(h => ({
-          scene_id: newMedia.id,
+          scene_id: mediaIdMap.get(media.id),
           type: h.type,
           yaw: h.yaw,
           pitch: h.pitch,
-          target_scene_id: h.target_scene_id, // Note: this won't map correctly across clones easily, but good enough for simple drafts
+          target_scene_id: h.target_scene_id ? (mediaIdMap.get(h.target_scene_id) || null) : null,
           label: h.label
         }))
       });
@@ -482,7 +485,8 @@ const applyDraftToOriginal = async (draftId) => {
     });
   }
 
-  // Copy media back
+  // Copy media back (two-pass to maintain hotspot target_scene_id mapping)
+  const mediaIdMap = new Map();
   for (const media of draft.media) {
     const newMedia = await prisma.propertyMedia.create({
       data: {
@@ -498,17 +502,19 @@ const applyDraftToOriginal = async (draftId) => {
         fp_y: media.fp_y
       }
     });
+    mediaIdMap.set(media.id, newMedia.id);
+  }
 
-    // Copy hotspots back
+  for (const media of draft.media) {
     const hotspots = await prisma.hotspot.findMany({ where: { scene_id: media.id } });
     if (hotspots.length > 0) {
       await prisma.hotspot.createMany({
         data: hotspots.map(h => ({
-          scene_id: newMedia.id,
+          scene_id: mediaIdMap.get(media.id),
           type: h.type,
           yaw: h.yaw,
           pitch: h.pitch,
-          target_scene_id: h.target_scene_id,
+          target_scene_id: h.target_scene_id ? (mediaIdMap.get(h.target_scene_id) || null) : null,
           label: h.label
         }))
       });
