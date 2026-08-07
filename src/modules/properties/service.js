@@ -231,7 +231,10 @@ const submitForReview = async (propertyId, user) => {
   const cleanId = String(propertyId || '').replace(/['"]/g, '').trim();
   const property = await prisma.property.findUnique({ 
     where: { id: cleanId },
-    include: { media: true, amenities: true }
+    include: { 
+      media: { orderBy: { sort_order: 'asc' } }, 
+      amenities: { orderBy: { amenity_name: 'asc' } }
+    }
   });
   if (!property) throw new ApiError('Property not found.', 404);
   ensureOwnerOrAdmin(property, user);
@@ -259,7 +262,10 @@ const submitForReview = async (propertyId, user) => {
     // For draft clones, ensure the user actually made at least one change compared to the original
     const original = await prisma.property.findUnique({
       where: { id: property.parent_id },
-      include: { media: true, amenities: true }
+      include: { 
+        media: { orderBy: { sort_order: 'asc' } }, 
+        amenities: { orderBy: { amenity_name: 'asc' } }
+      }
     });
 
     if (original) {
@@ -280,6 +286,11 @@ const submitForReview = async (propertyId, user) => {
 
       // Also check if any media was replaced or renamed (by comparing updated_at or urls)
       if (!hasChanges && property.media.some((m, i) => m.file_url !== original.media[i]?.file_url || m.scene_name !== original.media[i]?.scene_name)) {
+        hasChanges = true;
+      }
+
+      // Check if amenities changed
+      if (!hasChanges && property.amenities.some((a, i) => a.amenity_name !== original.amenities[i]?.amenity_name)) {
         hasChanges = true;
       }
 
